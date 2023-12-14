@@ -1,0 +1,7 @@
+# Nebula Group source roles:
+# define groups @nebula:dev, @nebula:sandbox, etc.
+nebula:
+    prod: 'ip-172-31-34-120.us-west-2.compute.internal,ip-172-31-41-253.us-west-2.compute.internal,ip-172-31-42-201.us-west-2.compute.internal,ip-172-31-46-105.us-west-2.compute.internal'
+    prodeu1: 'ip-172-31-38-91.eu-central-1.compute.internal,ip-172-31-38-142.eu-central-1.compute.internal'
+    dev: 'ip-172-31-35-196.us-west-2.compute.internal,ip-172-31-39-86.us-west-2.compute.internal,ip-172-31-47-213.us-west-2.compute.internal'
+    sandbox: 'ip-172-31-32-232.us-west-2.compute.internal,ip-172-31-33-184.us-west-2.compute.internal,ip-172-31-37-168.us-west-2.compute.internal,ip-172-31-45-14.us-west-2.compute.internal'

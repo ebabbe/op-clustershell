@@ -119,6 +119,12 @@ class OptionParser(optparse.OptionParser):
         optgrp.add_option("--hostfile", "--machinefile", action="append",
                           dest="hostfile", default=[], metavar='FILE',
                           help="path to file containing a list of target hosts")
+        optgrp.add_option("--filter-string", action="store", type=str,
+                          dest="filter_string", default="",
+                          help="Equivalent to filtering hosts in ansible by pattern")
+        optgrp.add_option("--limit", action="store", type=str,
+                          dest="limit", default="",
+                          help="Equivalent to limit argument in ansible for filtering hosts")
         optgrp.add_option("--topology", action="store", dest="topofile",
                           default=None, metavar='FILE',
                           help="topology configuration file to use for tree "

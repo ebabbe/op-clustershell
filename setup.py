@@ -23,7 +23,7 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = '1.0'
+VERSION = '1.1'
 
 CFGDIR = 'etc/clustershell'
 MANDIR = 'share/man'
@@ -50,6 +50,7 @@ setup(name='OP_ClusterShell',
                     'conf/groups.conf.d/README']),
                   (os.path.join(CFGDIR, 'groups.d'),
                    ['conf/groups.d/cluster.yaml.example',
+                    'conf/groups.d/nebula.yaml',
                     'conf/groups.d/local.cfg',
                     'conf/groups.d/README']),
                   (os.path.join(MANDIR, 'man1'),

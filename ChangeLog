@@ -1,3 +1,13 @@
+2023-12-14 E. Babbe <edward.babbe@motorolasolutions.com>
+
+        * OpenPath v1.1 released
+
+        * Allows for clushing to nebula
+
+        * Nebula groups made so you don't need to know hostnames (ex. clush -g nebula:dev)
+
+        * Introduction of ansible hostname pattern matching and --limit argument for selecting hosts of interest
+
 2023-12-12 E. Babbe <edward.babbe@motorolasolutions.com>
 
         * OpenPath v1.0 released
