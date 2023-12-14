@@ -40,6 +40,7 @@ import random
 import resource
 import socket
 import signal
+import subprocess
 import sys
 import time
 import threading
@@ -791,7 +792,7 @@ def format_nodes(nodes):
     env = os.environ.get("OP_ENV")
     new_node_list = []
     for node in nodes:
-        if not isinstance(node, str) or "acu" not in node:
+        if node.isnumeric():
             node = "acu" + str(node)
         if "openpath.local" not in node:
             try:
@@ -803,6 +804,23 @@ def format_nodes(nodes):
         else:
             new_node_list.append(node)
     return new_node_list
+
+def get_hosts_from_ansible(filter_string, limit):
+    limit_arg = " --limit " + limit if limit != "" else ""
+    filter_string = "all" if (limit != "" and filter_string == "") else filter_string
+    command_to_run = "ansible " + filter_string +  limit_arg + " --list-hosts"
+    try:
+        hosts = subprocess.check_output(command_to_run.split(), stderr=subprocess.DEVNULL).decode("utf-8").split("\n")
+    except Exception:
+        logging.warn("No ACUs discovered with given filter string")
+        return []
+    final_node_list = []
+    for line in hosts:
+        if "openpath.local" not in line:
+            continue
+        final_node_list.append(line)
+
+    return final_node_list
 
 def main():
     """clush script entry point"""
@@ -890,6 +908,11 @@ def main():
             # re-raise as OSError to be properly handled
             errno, strerror = exc.args
             raise OSError(errno, strerror, exc.filename)
+
+    # Retrieve hosts from ansible inventory with limit or filter string
+    if options.limit or options.filter_string:
+        discovered_nodes = get_hosts_from_ansible(options.filter_string, options.limit)
+        wnodelist.append(NodeSet.fromlist(discovered_nodes))
 
     # Instantiate target nodeset from command line and hostfile
     nodeset_base = NodeSet.fromlist(wnodelist)
