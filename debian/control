@@ -1,0 +1,34 @@
+Source: op-clustershell
+Section: net
+Priority: optional
+Maintainer: Debian Python Team <team+python@tracker.debian.org>
+Uploaders: Stéphan Gorget <phantez@gmail.com>
+Homepage: https://cea-hpc.github.io/clustershell/
+Build-Depends: debhelper-compat (= 13), python3-all, python3-setuptools, dh-python
+Standards-Version: 4.6.2.0
+Vcs-Git: https://salsa.debian.org/python-team/packages/clustershell.git
+Vcs-Browser: https://salsa.debian.org/python-team/packages/clustershell
+
+Package: python3-op-clustershell
+Architecture: all
+Section: python
+Depends: ${misc:Depends}, ${python3:Depends}
+Suggests: vim-addon-manager
+Recommends: python3-yaml
+Description: op-clustershell python3 libraries
+ Event-based Python library to execute commands on local or distant
+ cluster nodes in parallel depending on the selected engine and
+ worker mechanisms.
+
+Package: op-clustershell
+Architecture: all
+Depends: ${misc:Depends}, ${python3:Depends}, python3-op-clustershell
+Suggests: vim-addon-manager
+Description: Distributed shell that provides an efficient Python interface
+ Event-based Python library to execute commands on local or distant
+ cluster nodes in parallel depending on the selected engine and
+ worker mechanisms.
+ .
+ The library provides also advanced nodeset handling methods. Its goal
+ is to improve the administration of cluster by providing a lightweight
+ but scalable API for developers.

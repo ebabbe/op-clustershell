@@ -1,0 +1,30 @@
+#!/usr/bin/make -f
+
+#export DH_VERBOSE=1
+export PYBUILD_NAME=op-clustershell
+export PYBUILD_DESTDIR_python3 = debian/python3-$(PYBUILD_NAME)
+export PYBUILD_AFTER_INSTALL_python3 = rm -rf {destdir}/etc
+
+%:
+	dh $@ --with python3 --buildsystem=pybuild
+
+override_dh_auto_install:
+	dh_auto_install
+	dh_movefiles --package=$(PYBUILD_NAME) --sourcedir=$(PYBUILD_DESTDIR_python3) usr/bin
+	dh_install --package=$(PYBUILD_NAME) conf/clush.conf etc/clustershell
+	dh_install --package=$(PYBUILD_NAME) conf/clush.conf.d etc/clustershell
+	dh_install --package=$(PYBUILD_NAME) conf/groups.conf etc/clustershell
+	dh_install --package=$(PYBUILD_NAME) conf/groups.conf.d etc/clustershell
+	dh_install --package=$(PYBUILD_NAME) conf/groups.d etc/clustershell
+	dh_install --package=$(PYBUILD_NAME) conf/topology.conf.example etc/clustershell
+	dh_install --package=$(PYBUILD_NAME) debian/op-clustershell.yaml usr/share/vim/registry
+	dh_install --package=$(PYBUILD_NAME) debian/op-clustershell.yaml usr/share/vim/registry
+	dh_install --package=$(PYBUILD_NAME) doc/extras/vim/ftdetect/clustershell.vim usr/share/vim/addons/ftdetect
+	dh_install --package=$(PYBUILD_NAME) doc/extras/vim/syntax/clushconf.vim usr/share/vim/addons/syntax
+	dh_install --package=$(PYBUILD_NAME) doc/extras/vim/syntax/groupsconf.vim usr/share/vim/addons/syntax
+	rm -rf $(PYBUILD_DESTDIR_python3)/usr/etc
+	rm -rf $(PYBUILD_DESTDIR_python3)/usr/share/man
+
+override_dh_auto_clean:
+	dh_auto_clean
+	rm -rf scripts/nodeset scripts/clush scripts/clubak scripts/cluset lib/ClusterShell.egg-info

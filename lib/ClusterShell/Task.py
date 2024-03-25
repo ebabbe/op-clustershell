@@ -58,7 +58,7 @@ except NameError:  # Python 3 compat
     basestring = str
 
 from ClusterShell.Defaults import config_paths, DEFAULTS
-from ClusterShell.Defaults import _local_workerclass, _distant_workerclass, _load_workerclass
+from ClusterShell.Defaults import _local_workerclass, _distant_workerclass, _mqtt_workerclass, _load_workerclass
 from ClusterShell.Engine.Engine import EngineAbortException
 from ClusterShell.Engine.Engine import EngineTimeoutException
 from ClusterShell.Engine.Engine import EngineAlreadyRunningError
@@ -288,7 +288,8 @@ class Task(object):
             self._default = defaults._task_default.copy()
             self._default.update(
                 {"local_worker": _local_workerclass(defaults),
-                 "distant_worker": _distant_workerclass(defaults)})
+                 "distant_worker": _distant_workerclass(defaults),
+                 "mqtt_worker": _mqtt_workerclass(defaults)})
             self._info = defaults._task_info.copy()
 
             # use factory class PreferredEngine that gives the proper
@@ -548,6 +549,30 @@ class Task(object):
           the info dictionary is then updated.
         """
         self._info[info_key] = value
+
+    def mqtt_pub(self, command, **kwargs):
+        handler = kwargs.get("handler", None)
+        timeo = kwargs.get("timeout", None)
+        autoclose = kwargs.get("autoclose", False)
+        stderr = kwargs.get("stderr", self.default("stderr"))
+        stdin = kwargs.get("stdin", self.default("stdin"))
+        remote = kwargs.get("remote", True)
+        errors = kwargs.get("errors", {})
+        wrkcls = self.default('mqtt_worker')
+        if kwargs.get("nodes", None):
+            worker = wrkcls(NodeSet(kwargs["nodes"]), command=command,
+                            handler=handler, stderr=stderr,
+                            timeout=timeo, autoclose=autoclose, remote=remote, errors=errors)
+            if not stdin:
+                try:
+                    worker.set_write_eof()  # prevent reading from stdin
+                except EngineClientError:   # not all workers support writing
+                    pass
+
+            # schedule worker for execution in this task
+            self.schedule(worker)
+
+            return worker
 
     def shell(self, command, **kwargs):
         """

@@ -23,13 +23,13 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = '1.1'
+VERSION = '1.2'
 
 CFGDIR = 'etc/clustershell'
 MANDIR = 'share/man'
 
 # Dependencies (for pip install)
-REQUIRES = ['PyYAML']
+REQUIRES = ['PyYAML', 'opus', 'botocore', 'opbok', 'proton']
 
 setup(name='OP_ClusterShell',
       version=VERSION,

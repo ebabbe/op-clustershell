@@ -164,6 +164,38 @@ class DirectOutputHandler(OutputHandler):
                                      (self._prog, nodeset))
         self.update_prompt(worker)
 
+class DirectOutputDirHandler(DirectOutputHandler):
+    """Direct output files event handler class. pssh style"""
+    def __init__(self, display, ns, prog=None):
+        DirectOutputHandler.__init__(self, display, prog)
+        self._ns = ns
+        self._outfiles = {}
+        self._errfiles = {}
+        if display.outdir:
+            for n in self._ns:
+               self._outfiles[n] = open(join(display.outdir, n), mode="w")
+        if display.errdir:
+            for n in self._ns:
+               self._errfiles[n] = open(join(display.errdir, n), mode="w")
+
+    def ev_read(self, worker, node, sname, msg):
+        DirectOutputHandler.ev_read(self, worker, node, sname, msg)
+        if sname == worker.SNAME_STDOUT:
+            if self._display.outdir:
+                self._outfiles[node].write("{}\n".format(msg.decode()))
+        elif sname == worker.SNAME_STDERR:
+            if self._display.errdir:
+                self._errfiles[node].write("{}\n".format(msg.decode()))
+
+    def ev_close(self, worker, timedout):
+        DirectOutputHandler.ev_close(self, worker, timedout)
+        if self._display.outdir:
+            for v in self._outfiles.values():
+                v.close()
+        if self._display.errdir:
+            for v in self._errfiles.values():
+                v.close()
+
 class DirectProgressOutputHandler(DirectOutputHandler):
     """Direct output event handler class with progress support."""
 
@@ -654,10 +686,14 @@ def bind_stdin(worker, display):
     stdin_thread.setDaemon(True)
     stdin_thread.start()
 
-def run_command(task, cmd, ns, timeout, display, remote, trytree):
+def run_command(task, cmd, ns, timeout, display, remote, trytree, publish=None, errors={}):
     """
-    Create and run the specified command line, displaying
-    results in a dshbak way when gathering is used.
+    For SSH command:
+        Create and run the specified command line, displaying
+        results in a dshbak way when gathering is used.
+    For MQTT Command:
+        Create and publish the specified command line to each
+        ACU's command topic.
     """
     task.set_default("USER_running", True)
 
@@ -675,18 +711,27 @@ def run_command(task, cmd, ns, timeout, display, remote, trytree):
     elif display.progress and display.verbosity > VERB_QUIET:
         handler = DirectProgressOutputHandler(display)
         handler.runtimer_init(task, len(ns))
+    elif (display.outdir or display.errdir) and ns is not None:
+        if display.outdir and not exists(display.outdir):
+            os.makedirs(display.outdir)
+        if display.errdir and not exists(display.errdir):
+            os.makedirs(display.errdir)
+        handler = DirectOutputDirHandler(display, ns)
     else:
         # this is the simpler but faster output handler
         handler = DirectOutputHandler(display)
-
-    worker = task.shell(cmd, nodes=ns, handler=handler, timeout=timeout,
+    if publish is not None:
+        worker = task.mqtt_pub(cmd, nodes=ns, handler=handler, timeout=timeout,
+                        remote=remote, tree=trytree, errors=errors)
+        task.resume(timeout=8)
+    else:
+        worker = task.shell(cmd, nodes=ns, handler=handler, timeout=timeout,
                         remote=remote, tree=trytree)
-    if ns is None:
-        worker.set_key('LOCAL')
-    if task.default("USER_stdin_worker"):
-        bind_stdin(worker, display)
-
-    task.resume()
+        if ns is None:
+            worker.set_key('LOCAL')
+        if task.default("USER_stdin_worker"):
+            bind_stdin(worker, display)
+        task.resume()
 
 def run_copy(task, sources, dest, ns, timeout, preserve_flag, display):
     """run copy command"""
@@ -791,19 +836,20 @@ def clush_excepthook(extype, exp, traceback):
 def format_nodes(nodes):
     env = os.environ.get("OP_ENV")
     new_node_list = []
+    errors = {}
     for node in nodes:
         if node.isnumeric():
             node = "acu" + str(node)
         if "openpath.local" not in node:
             try:
                 node = socket.gethostbyname_ex(node)[0]
-            except Exception:
-                pass
+            except Exception as e:
+                errors[node] = str(e)
             finally:
                 new_node_list.append(node)
         else:
             new_node_list.append(node)
-    return new_node_list
+    return new_node_list, errors
 
 def get_hosts_from_ansible(filter_string, limit):
     limit_arg = " --limit " + limit if limit != "" else ""
@@ -839,6 +885,7 @@ def main():
     parser.install_groupsconf_option()
     parser.install_clush_config_options()
     parser.install_nodes_options()
+    parser.install_mqtt_options()
     parser.install_display_options(verbose_options=True)
     parser.install_filecopy_options()
     parser.install_connector_options()
@@ -973,7 +1020,7 @@ def main():
     #
     # check for clush interactive mode
     interactive = not len(args) and \
-                  not (options.copy or options.rcopy)
+                  not (options.copy or options.rcopy or options.publish)
     # check for foreground ttys presence (input)
     stdin_isafgtty = sys.stdin is not None and sys.stdin.isatty() and \
         os.tcgetpgrp(sys.stdin.fileno()) == os.getpgrp()
@@ -1095,6 +1142,8 @@ def main():
 
     if (options.copy or options.rcopy) and not args:
         parser.error("--[r]copy option requires at least one argument")
+    if options.publish and not args:
+        parser.error("--publish option requires at least one argument")
     if options.copy:
         if not options.dest_path:
             # append '/' to clearly indicate a directory for tree mode
@@ -1114,7 +1163,9 @@ def main():
                                                 config.connect_timeout,
                                                 config.command_timeout,
                                                 op))
-    nodeset_base = NodeSet(",".join(format_nodes(expand(nodeset_base))))
+
+    formatted_nodes, errors = format_nodes(expand(nodeset_base))
+    nodeset_base = NodeSet(",".join(formatted_nodes))
     if not task.default("USER_interactive"):
         if display.verbosity >= VERB_DEBUG and task.topology:
             print(Display.COLOR_RESULT_FMT % '-' * 15)
@@ -1128,7 +1179,7 @@ def main():
                       options.preserve_flag, display)
         else:
             run_command(task, ' '.join(args), nodeset_base, timeout, display,
-                        options.remote != 'no', options.worker is None)
+                        options.remote != 'no', options.worker is None, options.publish, errors)
 
     if user_interaction:
         ttyloop(task, nodeset_base, timeout, display, options.remote != 'no',

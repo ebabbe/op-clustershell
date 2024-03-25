@@ -89,6 +89,10 @@ def _distant_workerclass(defaults):
     """Return default distant worker class."""
     return _load_workerclass(defaults.distant_workername)
 
+def _mqtt_workerclass(defaults):
+    """Return mqtt worker class."""
+    return _load_workerclass(defaults.mqtt_workername)
+
 def config_paths(config_name):
     """Return default path list for a ClusterShell config file name."""
 
@@ -188,7 +192,8 @@ class Defaults(object):
                      "port_qlimit"        : 100, # 1.8 compat
                      "auto_tree"          : True,
                      "local_workername"   : 'exec',
-                     "distant_workername" : 'ssh'}
+                     "distant_workername" : 'ssh',
+                     "mqtt_workername"    : 'mqtt'}
 
     #
     # Datatype converters for task_default
@@ -201,7 +206,8 @@ class Defaults(object):
                                 "port_qlimit"        : ConfigParser.getint, # 1.8 compat
                                 "auto_tree"          : ConfigParser.getboolean,
                                 "local_workername"   : ConfigParser.get,
-                                "distant_workername" : ConfigParser.get}
+                                "distant_workername" : ConfigParser.get,
+                                "mqtt_workername"    : ConfigParser.get}
 
     #
     # Default values for task "info" async dict

@@ -1,0 +1,219 @@
+op-clustershell (1.2) UNRELEASED; urgency=medium
+
+  * OpenPath v1.2 released
+
+  * Added support for command output to for errors to errdir and output to outdir
+
+  * Can publish commands to ACU MQTT Topic with --publish
+
+  * Added ability to make debian package(s), will use those instead of python package now
+
+ -- Eddie Babbe <edward.babbe@motorolasolutions.com> Mon, 25 Mar 2024 12:29:30 +0700
+
+clustershell (1.9.2-1) UNRELEASED; urgency=medium
+
+  * New upstream release 1.9.2
+
+ -- Stéphan Gorget <phantez@gmail.com>  Fri, 13 Oct 2023 13:12:11 +0100
+
+clustershell (1.9.1-1) unstable; urgency=medium
+
+  * New upstream release 1.9.1
+  * Update debian policy version to 4.6.2.0
+  * Add couple of configuration examples
+  * Relocate all configuration examples under /etc/clustershell
+  * Remove d/clustershell.examples
+
+ -- Stéphan Gorget <phantez@gmail.com>  Tue, 14 Feb 2023 15:53:03 +0000
+
+clustershell (1.9-1) unstable; urgency=medium
+
+  * New upstream release 1.9
+  * Remove unnecessary README.debian file about vim-addon
+  * Update copyright years
+  * Update debian policy version to 4.6.1.1
+  * Remove empty files from the debian dir
+  * Remove get-orig-tarball target
+  * Remove python3-yaml recommended from clustershell package
+  * Remove python3-pkg-resources from python3-clustershell dependency
+  * Define import_name for autopkgtest
+  * Remove empty /etc folder in python3-clustershell
+
+ -- Stéphan Gorget <phantez@gmail.com>  Wed, 30 Nov 2022 12:34:56 +0000
+
+clustershell (1.8.4-2) unstable; urgency=medium
+
+  [ Debian Janitor ]
+  * Set upstream metadata fields: Bug-Database, Bug-Submit, Repository,
+    Repository-Browse.
+
+ -- Jelmer Vernooĳ <jelmer@debian.org>  Thu, 26 May 2022 19:46:27 +0100
+
+clustershell (1.8.4-1) unstable; urgency=medium
+
+  * New upstream release 1.8.4
+  * Debian policy 4.6.0.1, no changes required
+  * Remove constraints unnecessary since buster:
+    + Build-Depends: Drop versioned constraint on python3-all.
+
+ -- Stéphan Gorget <phantez@gmail.com>  Wed, 02 Feb 2022 21:09:23 -0000
+
+clustershell (1.8.3-2) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * d/control: Update Maintainer field with new Debian Python Team
+    contact address.
+  * d/control: Update Vcs-* fields with new Debian Python Team Salsa
+    layout.
+
+ -- Sandro Tosi <morph@debian.org>  Wed, 08 Sep 2021 22:38:30 -0400
+
+clustershell (1.8.3-1) unstable; urgency=medium
+
+  * New upstream release
+  * Use secure URI in Homepage field.
+  * Bump debhelper from old 9 to 12.
+  * Set upstream metadata fields: Repository.
+  * Fix day-of-week for changelog entries 1.6-4, 1.3-1.
+
+ -- Stéphan Gorget <phantez@gmail.com>  Thu, 17 Oct 2019 08:10:15 +0000
+
+clustershell (1.8.1-2) unstable; urgency=medium
+
+  * Team upload.
+  * Use debhelper-compat instead of debian/compat.
+  * Drop Python 2 support.
+
+ -- Ondřej Nový <onovy@debian.org>  Sun, 25 Aug 2019 10:22:21 +0200
+
+clustershell (1.8.1-1) unstable; urgency=medium
+
+  [ Ondřej Nový ]
+  * d/copyright: Use https protocol in Format field
+  * d/control: Remove ancient X-Python-Version field
+  * d/control: Remove ancient X-Python3-Version field
+
+  [ Stéphan Gorget ]
+  * Debian policy 4.2.1, no changes required
+  * New upstream release
+
+ -- Stéphan Gorget <phantez@gmail.com>  Mon, 05 Nov 2018 11:38:52 +0100
+
+clustershell (1.8-1) unstable; urgency=medium
+
+  * New upstream release
+  * Debian policy 4.1.1.1, no changes required
+  * split into 3 packages:
+    - clustershell that contains the binaries and depend on python3-clustershell
+    - python3-clustershell that contains the library for python3
+    - python-clustershell that contains the library for python2
+  * Version supported of python are now :
+    - python (>= 2.6) and python (>= 3.4)
+
+ -- Stéphan Gorget <phantez@gmail.com>  Wed, 25 Oct 2017 22:48:31 +0200
+
+clustershell (1.7.3-2) unstable; urgency=medium
+
+  * Add dependency python-pkg-resources (closes: Bug#870359)
+  * Debian policy 4.0.1, no changes required
+
+ -- Stéphan Gorget <phantez@gmail.com>  Tue, 22 Aug 2017 15:41:03 +0200
+
+clustershell (1.7.3-1) unstable; urgency=medium
+
+  * New upstream release
+  * New binary and manpage cluset
+  * Change license from "CeCILL-C V1" to "LGPL v2.1 or later".
+
+ -- Stéphan Gorget <phantez@gmail.com>  Fri, 23 Dec 2016 10:46:28 +0100
+
+clustershell (1.7.2-1) unstable; urgency=medium
+
+  * New upstream release
+  * Debian policy 3.9.8, no changes required
+
+ -- Stéphan Gorget <phantez@gmail.com>  Sat, 25 Jun 2016 18:31:21 +0200
+
+clustershell (1.7-1-1) unstable; urgency=low
+
+  * New upstream release 1.7
+  * Debian policy 3.9.6, no changes required
+  * Add python-yaml as recommended
+
+ -- Stéphan Gorget <phantez@gmail.com>  Fri, 27 Nov 2015 11:14:20 +0100
+
+clustershell (1.6-4) unstable; urgency=low
+
+  * Remove lib/ClusterShell.egg-info after build. Closes: #671188
+
+ -- Stéphan Gorget <phantez@gmail.com>  Thu, 20 Feb 2014 07:00:00 +0100
+
+clustershell (1.6-3) UNRELEASED; urgency=low
+
+  * Move recommends to suggests
+  * Debian policy 3.9.5
+
+ -- Stéphan Gorget <phantez@gmail.com>  Wed, 19 Feb 2014 18:07:11 +0100
+
+clustershell (1.6-2) UNRELEASED; urgency=low
+
+  * Remove Vcs-* fields pointing to upstream repository.
+  * Add Vcs-* fields pointing to Debian packaging.
+
+ -- Jakub Wilk <jwilk@debian.org>  Sun, 05 May 2013 15:37:00 +0200
+
+clustershell (1.6-1) unstable; urgency=low
+
+  * New upstream release 1.6
+  * Changed groups.conf to works with mawk. Closes: #638752
+  * Added new folder groups.conf.d and 2 example files and a README
+  * Mainstream project has moved from sourceforge to github
+    - Changed all the related urls
+  * Validated Standards-Version 3.9.3
+
+ -- Stéphan Gorget <phantez@gmail.com>  Sat, 14 Apr 2012 00:36:24 +0200
+
+clustershell (1.5.1-1) unstable; urgency=low
+
+  * New upstream release
+
+ -- Stéphan Gorget <phantez@gmail.com>  Tue, 12 Jul 2011 18:45:38 +0200
+
+clustershell (1.4.3-1) unstable; urgency=low
+
+  * New upstream release 1.4.3
+  * Changed to use dh_python2
+  * Debian policy 3.9.2
+
+ -- Stéphan Gorget <phantez@gmail.com>  Sat, 16 Apr 2011 18:15:05 +0200
+
+clustershell (1.4-1) unstable; urgency=low
+
+  * New upstream release
+  * Add version number to the Build-Depends parameters :
+    - python-support (>= 0.6)
+    - python-all(>= 2.4)
+    - python-setuptools (>= 0.6)
+  * Remove debian/dir useless file
+
+ -- Stéphan Gorget <phantez@gmail.com>  Wed, 26 Jan 2011 10:48:28 +0100
+
+clustershell (1.3.3-1) unstable; urgency=low
+
+  * Modify rules to change from CDBS to dh
+  * Syntax highlighting for clustershell
+    - Modify control recommends vim-addon-manager
+    - Add README.Debian to explain how to integrate vim files with
+      vim-addon-manager.
+    - Add clustershell.yaml for vim-addon-manager
+    - Modify install and dirs to install yaml and .vim files
+  * New upstream release 1.3.3
+  * Add dependency to python-setuptools
+
+ -- Stéphan Gorget <phantez@gmail.com>  Sun, 28 Nov 2010 01:50:29 +0100
+
+clustershell (1.3-1) unstable; urgency=low
+
+  * Initial release. (Closes: #584769)
+
+ -- Stéphan Gorget <phantez@gmail.com>  Wed, 28 Jul 2010 18:38:40 +0200
