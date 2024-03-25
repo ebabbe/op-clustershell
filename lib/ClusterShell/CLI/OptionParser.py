@@ -98,6 +98,19 @@ class OptionParser(optparse.OptionParser):
         self.add_option("--groupsconf", action="store", metavar='FILE',
                         help="use alternate config file for groups.conf(5)")
 
+    def install_mqtt_options(self):
+        """Options for interacting with mqtt"""
+        optgrp = optparse.OptionGroup(self, "Connecting to MQTT")
+        optgrp.add_option("--publish", action="store_true", dest="publish",
+                          help="publish command to mqtt")
+        optgrp.add_option("--listen", action="store_true", dest="listen",
+                          help="listen for mqtt command response by polling S3")
+        optgrp.add_option("--responseId", action="append", dest="responseId",
+                          help="fetch mqtt command response from S3")
+        self.add_option_group(optgrp)
+
+
+
     def install_nodes_options(self):
         """Install nodes selection options"""
         optgrp = optparse.OptionGroup(self, "Selecting target nodes")

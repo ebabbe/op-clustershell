@@ -439,8 +439,9 @@ class Engine(object):
 
     def _can_register(self, client):
         assert not client.registered
-
-        if not client.delayable or client.worker._fanout == FANOUT_UNLIMITED:
+        if hasattr(client, "started") and client.started:
+            return False
+        elif not client.delayable or client.worker._fanout == FANOUT_UNLIMITED:
             return True
         elif client.worker._fanout is FANOUT_DEFAULT:
             return self._reg_stats.get('default', 0) < self.info['fanout']

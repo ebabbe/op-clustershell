@@ -1,3 +1,13 @@
+2024-03-07 E. Babbe <edward.babbe@motorolasolutions.com>
+
+        * OpenPath v1.2 released
+
+        * Added support for command output to for errors to errdir and output to outdir
+
+        * Can publish commands to ACU MQTT Topic with --publish
+
+        * Added ability to make debian package(s), will use those instead of python package now
+
 2023-12-14 E. Babbe <edward.babbe@motorolasolutions.com>
 
         * OpenPath v1.1 released
