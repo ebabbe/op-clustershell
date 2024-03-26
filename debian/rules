@@ -6,7 +6,15 @@ export PYBUILD_DESTDIR_python3 = debian/python3-$(PYBUILD_NAME)
 export PYBUILD_AFTER_INSTALL_python3 = rm -rf {destdir}/etc
 
 %:
-	dh $@ --with python3 --buildsystem=pybuild
+	dh $@ --with python-virtualenv
+
+VIRTUALENV_PYTHON = $(wildcard /usr/bin/python3.10 /usr/bin/python3.11 /usr/bin/python3.12)
+
+override_dh_virtualenv:
+	dh_virtualenv --python ${VIRTUALENV_PYTHON} --builtin-venv --upgrade-pip
+
+override_dh_gencontrol:
+	dh_gencontrol -- $(DPKG_GENCONTROL_ARGS)
 
 override_dh_auto_install:
 	dh_auto_install
@@ -28,3 +36,9 @@ override_dh_auto_install:
 override_dh_auto_clean:
 	dh_auto_clean
 	rm -rf scripts/nodeset scripts/clush scripts/clubak scripts/cluset lib/ClusterShell.egg-info
+
+# no-op auto-build. we will build this ourself
+override_dh_auto_build:
+
+# do not strip debug symbols (keep md5sums intact)
+override_dh_strip:
