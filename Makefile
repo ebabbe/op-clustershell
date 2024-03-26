@@ -43,8 +43,8 @@ deb-all: deb-jammy-amd64
 
 # TODO: this is ugly. would be nice if opdeploy knew how to parse the filename itself so we don't need to specify --arch --dist
 deploy-%:
-	-opdeploy deb --env $* --arch amd64 --dist jammy dist/jammy-amd64/$(NAME)_$(call package_version)_amd64.deb
-	-opdeploy deb --env $* --arch all --dist jammy dist/jammy-amd64/$(NAME)-tools_$(call package_version)_all.deb
+	-opdeploy deb --env $* --arch all --dist jammy dist/jammy-amd64/$(NAME)_$(call package_version)_all.deb
+	-opdeploy deb --env $* --arch all --dist jammy dist/jammy-amd64/python3-$(NAME)_$(call package_version)_all.deb
 
 .PHONY: deploy
 deploy: deploy-sandbox
