@@ -46,21 +46,24 @@ def _replace_cmd(pattern, node, rank):
     %n, %rank map `rank'
     """
     variables = {
-        'h':     node,
-        'host':  node,
-        'hosts': node,
-        'n':     rank or 0,
-        'rank':  rank or 0,
-    #    'u': None,
+        "h": node,
+        "host": node,
+        "hosts": node,
+        "n": rank or 0,
+        "rank": rank or 0,
+        #    'u': None,
     }
+
     class Replacer(Template):
-        delimiter = '%'
+        delimiter = "%"
+
     try:
         cmd = Replacer(pattern).substitute(variables)
     except (KeyError, ValueError) as error:
         msg = "%s is not a valid pattern, use '%%%%' to escape '%%'" % error
         raise WorkerError(msg)
     return cmd
+
 
 class ExecClient(EngineClient):
     """
@@ -69,8 +72,9 @@ class ExecClient(EngineClient):
     Useful as a superclass for other more specific workers.
     """
 
-    def __init__(self, node, command, worker, stderr, timeout, autoclose=False,
-                 rank=None):
+    def __init__(
+        self, node, command, worker, stderr, timeout, autoclose=False, rank=None
+    ):
         """
         Create an EngineClient-type instance to locally run *command*.
 
@@ -95,7 +99,6 @@ class ExecClient(EngineClient):
 
     def _start(self):
         """Prepare command and start client."""
-
         # Build command
         cmd, cmd_env = self._build_cmd()
 
@@ -104,11 +107,11 @@ class ExecClient(EngineClient):
 
         task = self.worker.task
         if task.info("debug", False):
-            name = self.__class__.__name__.upper().split('.')[-1]
+            name = self.__class__.__name__.upper().split(".")[-1]
             if shell:
                 task.info("print_debug")(task, "%s: %s" % (name, cmd))
             else:
-                task.info("print_debug")(task, "%s: %s" % (name, ' '.join(cmd)))
+                task.info("print_debug")(task, "%s: %s" % (name, " ".join(cmd)))
 
         self.popen = self._exec_nonblock(cmd, env=cmd_env, shell=shell)
         self._on_nodeset_start(self.key)
@@ -121,7 +124,7 @@ class ExecClient(EngineClient):
             prc = self.popen.poll()
             # if prc is None, process is still running
             if prc is None:
-                try: # try to kill it
+                try:  # try to kill it
                     self.popen.kill()
                 except OSError:
                     pass
@@ -191,6 +194,7 @@ class ExecClient(EngineClient):
                 print_debug(task, "%s: %s" % (key, msg))
             node_msgline(key, msg, sname)  # handle full msg line
 
+
 class CopyClient(ExecClient):
     """
     Run a local `cp' between a source and destination.
@@ -198,11 +202,21 @@ class CopyClient(ExecClient):
     Destination could be a directory.
     """
 
-    def __init__(self, node, source, dest, worker, stderr, timeout, autoclose,
-                 preserve, reverse, rank=None):
+    def __init__(
+        self,
+        node,
+        source,
+        dest,
+        worker,
+        stderr,
+        timeout,
+        autoclose,
+        preserve,
+        reverse,
+        rank=None,
+    ):
         """Create an EngineClient-type instance to locally run 'cp'."""
-        ExecClient.__init__(self, node, None, worker, stderr, timeout,
-                            autoclose, rank)
+        ExecClient.__init__(self, node, None, worker, stderr, timeout, autoclose, rank)
         self.source = source
         self.dest = dest
 
@@ -230,7 +244,7 @@ class CopyClient(ExecClient):
         source = _replace_cmd(self.source, self.key, self.rank)
         dest = _replace_cmd(self.dest, self.key, self.rank)
 
-        cmd_l = [ "cp" ]
+        cmd_l = ["cp"]
 
         if self.isdir:
             cmd_l.append("-r")
@@ -285,9 +299,9 @@ class ExecWorker(DistantWorker):
         self._clients = []
 
         self.nodes = NodeSet(nodes)
-        self.command = kwargs.get('command')
-        self.source = kwargs.get('source')
-        self.dest = kwargs.get('dest')
+        self.command = kwargs.get("command")
+        self.source = kwargs.get("source")
+        self.dest = kwargs.get("dest")
 
         self._create_clients(timeout=timeout, **kwargs)
 
@@ -304,8 +318,7 @@ class ExecWorker(DistantWorker):
         There will be one client per node in self.nodes
         """
         # do not iterate if special %hosts placeholder is found in command
-        if self.command and ('%hosts' in self.command or
-                             '%{hosts}' in self.command):
+        if self.command and ("%hosts" in self.command or "%{hosts}" in self.command):
             self._add_client(self.nodes, rank=None, **kwargs)
         else:
             for rank, node in enumerate(self.nodes):
@@ -313,24 +326,36 @@ class ExecWorker(DistantWorker):
 
     def _add_client(self, nodes, **kwargs):
         """Create one shell or copy client."""
-        autoclose = kwargs.get('autoclose', False)
-        stderr = kwargs.get('stderr', False)
-        rank = kwargs.get('rank')
-        timeout = kwargs.get('timeout')
+        autoclose = kwargs.get("autoclose", False)
+        stderr = kwargs.get("stderr", False)
+        rank = kwargs.get("rank")
+        timeout = kwargs.get("timeout")
 
         if self.command is not None:
             cls = self.__class__.SHELL_CLASS
-            self._clients.append(cls(nodes, self.command, self, stderr,
-                                     timeout, autoclose, rank))
+            self._clients.append(
+                cls(nodes, self.command, self, stderr, timeout, autoclose, rank)
+            )
         elif self.source:
             cls = self.__class__.COPY_CLASS
-            self._clients.append(cls(nodes, self.source, self.dest, self,
-                                     stderr, timeout, autoclose,
-                                     kwargs.get('preserve', False),
-                                     kwargs.get('reverse', False), rank))
+            self._clients.append(
+                cls(
+                    nodes,
+                    self.source,
+                    self.dest,
+                    self,
+                    stderr,
+                    timeout,
+                    autoclose,
+                    kwargs.get("preserve", False),
+                    kwargs.get("reverse", False),
+                    rank,
+                )
+            )
         else:
-            raise ValueError("missing command or source parameter in "
-                             "worker constructor")
+            raise ValueError(
+                "missing command or source parameter in " "worker constructor"
+            )
 
     def _engine_clients(self):
         """
@@ -377,11 +402,10 @@ class ExecWorker(DistantWorker):
         assert self._close_count <= len(self._clients)
         if self._close_count == len(self._clients) and self.eh is not None:
             # also use hasattr check because ev_timeout was missing in 1.8.0
-            if self._has_timeout and hasattr(self.eh, 'ev_timeout'):
+            if self._has_timeout and hasattr(self.eh, "ev_timeout"):
                 # Legacy ev_timeout event
                 self.eh.ev_timeout(self)
-            _eh_sigspec_invoke_compat(self.eh.ev_close, 2, self,
-                                      self._has_timeout)
+            _eh_sigspec_invoke_compat(self.eh.ev_close, 2, self, self._has_timeout)
 
 
 WORKER_CLASS = ExecWorker

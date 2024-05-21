@@ -1,3 +1,13 @@
+2024-05-21 E. Babbe <edward.babbe@motorolasolutions.com>
+
+        * OpenPath v2.0 released
+
+        * Clush can now fetch results of run-scripts from S3
+
+	* Handle own asynchronous mqtt publishing with threading, remove proton authentication
+
+	* Determine ACU opals with templating instead of querying Helium
+
 2024-03-07 E. Babbe <edward.babbe@motorolasolutions.com>
 
         * OpenPath v1.2 released
