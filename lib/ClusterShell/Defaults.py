@@ -40,10 +40,11 @@ import sys
 #
 # defaults.conf sections
 #
-CFG_SECTION_TASK_DEFAULT = 'task.default'
-CFG_SECTION_TASK_INFO = 'task.info'
-CFG_SECTION_NODESET = 'nodeset'
-CFG_SECTION_ENGINE = 'engine'
+CFG_SECTION_TASK_DEFAULT = "task.default"
+CFG_SECTION_TASK_INFO = "task.info"
+CFG_SECTION_NODESET = "nodeset"
+CFG_SECTION_ENGINE = "engine"
+
 
 #
 # Functions
@@ -51,6 +52,7 @@ CFG_SECTION_ENGINE = 'engine'
 def _task_print_debug(task, line):
     """Default task debug printing function."""
     print(line)
+
 
 def _load_workerclass(workername):
     """
@@ -74,6 +76,7 @@ def _load_workerclass(workername):
     # Get the class pointer
     return sys.modules[modname].WORKER_CLASS
 
+
 def _import_module(modname):
     """Import a python module if not done yet."""
     # Iterate over a copy of sys.modules' keys to avoid RuntimeError
@@ -81,49 +84,62 @@ def _import_module(modname):
         # Import module if not yet loaded
         __import__(modname)
 
+
 def _local_workerclass(defaults):
     """Return default local worker class."""
     return _load_workerclass(defaults.local_workername)
+
 
 def _distant_workerclass(defaults):
     """Return default distant worker class."""
     return _load_workerclass(defaults.distant_workername)
 
+
 def _mqtt_workerclass(defaults):
     """Return mqtt worker class."""
     return _load_workerclass(defaults.mqtt_workername)
 
+
+def _s3_workerclass(defaults):
+    """Return s3 worker class."""
+    return _load_workerclass(defaults.s3_workername)
+
+
 def config_paths(config_name):
     """Return default path list for a ClusterShell config file name."""
 
-    paths = [os.path.join('/etc/clustershell', config_name), # system-wide
-             # default pip --user config file
-             os.path.expanduser('~/.local/etc/clustershell/%s' % config_name),
-             # Python installation prefix (for venv)
-             os.path.join(sys.prefix, 'etc/clustershell', config_name),
-             # per-user config (XDG Base Directory Specification)
-             os.path.join(os.environ.get('XDG_CONFIG_HOME',
-                                         os.path.expanduser('~/.config')),
-                          'clustershell', config_name)]
+    paths = [
+        os.path.join("/etc/clustershell", config_name),  # system-wide
+        # default pip --user config file
+        os.path.expanduser("~/.local/etc/clustershell/%s" % config_name),
+        # Python installation prefix (for venv)
+        os.path.join(sys.prefix, "etc/clustershell", config_name),
+        # per-user config (XDG Base Directory Specification)
+        os.path.join(
+            os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")),
+            "clustershell",
+            config_name,
+        ),
+    ]
 
     # $CLUSTERSHELL_CFGDIR has precedence over any other config paths
-    if 'CLUSTERSHELL_CFGDIR' in os.environ:
-        paths.append(os.path.join(os.environ['CLUSTERSHELL_CFGDIR'],
-                                  config_name))
+    if "CLUSTERSHELL_CFGDIR" in os.environ:
+        paths.append(os.path.join(os.environ["CLUSTERSHELL_CFGDIR"], config_name))
     return paths
+
 
 def _converter_integer_tuple(value):
     """ConfigParser converter for tuple of integers"""
     # NOTE: compatible with ConfigParser 'converters' argument (Python 3.5+)
-    return tuple(int(x) for x in value.split(',') if x.strip())
+    return tuple(int(x) for x in value.split(",") if x.strip())
+
 
 def _parser_get_integer_tuple(parser, section, option, **kwargs):
     """
     Compatible converter for parsing tuple of integers until we can use
     converters from new ConfigParser (Python 3.5+).
     """
-    return _converter_integer_tuple(
-        ConfigParser.get(parser, section, option, **kwargs))
+    return _converter_integer_tuple(ConfigParser.get(parser, section, option, **kwargs))
 
 
 #
@@ -184,75 +200,85 @@ class Defaults(object):
     #
     # Default values for task "default" sync dict
     #
-    _TASK_DEFAULT = {"stderr"             : False,
-                     "stdin"              : True,
-                     "stdout_msgtree"     : True,
-                     "stderr_msgtree"     : True,
-                     "engine"             : 'auto',
-                     "port_qlimit"        : 100, # 1.8 compat
-                     "auto_tree"          : True,
-                     "local_workername"   : 'exec',
-                     "distant_workername" : 'ssh',
-                     "mqtt_workername"    : 'mqtt'}
+    _TASK_DEFAULT = {
+        "stderr": False,
+        "stdin": True,
+        "stdout_msgtree": True,
+        "stderr_msgtree": True,
+        "engine": "auto",
+        "port_qlimit": 100,  # 1.8 compat
+        "auto_tree": True,
+        "local_workername": "exec",
+        "distant_workername": "ssh",
+        "mqtt_workername": "mqtt",
+        "s3_workername": "s3",
+    }
 
     #
     # Datatype converters for task_default
     #
-    _TASK_DEFAULT_CONVERTERS = {"stderr"             : ConfigParser.getboolean,
-                                "stdin"              : ConfigParser.getboolean,
-                                "stdout_msgtree"     : ConfigParser.getboolean,
-                                "stderr_msgtree"     : ConfigParser.getboolean,
-                                "engine"             : ConfigParser.get,
-                                "port_qlimit"        : ConfigParser.getint, # 1.8 compat
-                                "auto_tree"          : ConfigParser.getboolean,
-                                "local_workername"   : ConfigParser.get,
-                                "distant_workername" : ConfigParser.get,
-                                "mqtt_workername"    : ConfigParser.get}
+    _TASK_DEFAULT_CONVERTERS = {
+        "stderr": ConfigParser.getboolean,
+        "stdin": ConfigParser.getboolean,
+        "stdout_msgtree": ConfigParser.getboolean,
+        "stderr_msgtree": ConfigParser.getboolean,
+        "engine": ConfigParser.get,
+        "port_qlimit": ConfigParser.getint,  # 1.8 compat
+        "auto_tree": ConfigParser.getboolean,
+        "local_workername": ConfigParser.get,
+        "distant_workername": ConfigParser.get,
+        "mqtt_workername": ConfigParser.get,
+        "s3_workername": ConfigParser.get,
+    }
 
     #
     # Default values for task "info" async dict
     #
-    _TASK_INFO = {"debug"            : False,
-                  "print_debug"      : _task_print_debug,
-                  "fanout"           : 64,
-                  "grooming_delay"   : 0.25,
-                  "connect_timeout"  : 10,
-                  "command_timeout"  : 0}
+    _TASK_INFO = {
+        "debug": False,
+        "print_debug": _task_print_debug,
+        "fanout": 64,
+        "grooming_delay": 0.25,
+        "connect_timeout": 10,
+        "command_timeout": 0,
+    }
 
     #
     # Datatype converters for task_info
     #
-    _TASK_INFO_CONVERTERS = {"debug"           : ConfigParser.getboolean,
-                             "fanout"          : ConfigParser.getint,
-                             "grooming_delay"  : ConfigParser.getfloat,
-                             "connect_timeout" : ConfigParser.getfloat,
-                             "command_timeout" : ConfigParser.getfloat}
+    _TASK_INFO_CONVERTERS = {
+        "debug": ConfigParser.getboolean,
+        "fanout": ConfigParser.getint,
+        "grooming_delay": ConfigParser.getfloat,
+        "connect_timeout": ConfigParser.getfloat,
+        "command_timeout": ConfigParser.getfloat,
+    }
 
     #
     # Black list of info keys whose values cannot safely be propagated
     # in tree mode
     #
-    _TASK_INFO_PKEYS_BL = ['engine', 'print_debug']
+    _TASK_INFO_PKEYS_BL = ["engine", "print_debug"]
 
     #
     # Default values for NodeSet
     #
-    _NODESET = {"fold_axis" : ()}
+    _NODESET = {"fold_axis": ()}
 
     #
     # Datatype converters for NodeSet defaults
     #
-    _NODESET_CONVERTERS = {"fold_axis" : _parser_get_integer_tuple}
+    _NODESET_CONVERTERS = {"fold_axis": _parser_get_integer_tuple}
 
     #
     # Default values for Engine objects
     #
-    _ENGINE = {"port_qlimit" : 100}
+    _ENGINE = {"port_qlimit": 100}
 
     #
     # Datatype converters for Engine defaults
     #
-    _ENGINE_CONVERTERS = {"port_qlimit" : ConfigParser.getint}
+    _ENGINE_CONVERTERS = {"port_qlimit": ConfigParser.getint}
 
     def __init__(self, filenames):
         """Initialize Defaults from config filenames"""
@@ -275,8 +301,7 @@ class Defaults(object):
         # task_default overrides
         for key, conv in self._TASK_DEFAULT_CONVERTERS.items():
             try:
-                self._task_default[key] = conv(config, CFG_SECTION_TASK_DEFAULT,
-                                               key)
+                self._task_default[key] = conv(config, CFG_SECTION_TASK_DEFAULT, key)
             except (NoSectionError, NoOptionError):
                 pass
 
@@ -304,7 +329,7 @@ class Defaults(object):
     def __getattr__(self, name):
         """Defaults attribute lookup"""
         # 1.8 compat: port_qlimit moved into engine section
-        if name == 'port_qlimit':
+        if name == "port_qlimit":
             if self._engine[name] == self._ENGINE[name]:
                 return self._task_default[name]
         if name in self._engine:
@@ -319,8 +344,13 @@ class Defaults(object):
 
     def __setattr__(self, name, value):
         """Defaults attribute assignment"""
-        if name in ('_task_default', '_task_info', '_task_info_pkeys_bl',
-                    '_nodeset', '_engine'):
+        if name in (
+            "_task_default",
+            "_task_info",
+            "_task_info_pkeys_bl",
+            "_nodeset",
+            "_engine",
+        ):
             object.__setattr__(self, name, value)
         elif name in self._engine:
             self._engine[name] = value
@@ -333,7 +363,8 @@ class Defaults(object):
         else:
             raise AttributeError(name)
 
+
 #
 # Globally accessible Defaults object
 #
-DEFAULTS = Defaults(config_paths('defaults.conf'))
+DEFAULTS = Defaults(config_paths("defaults.conf"))
