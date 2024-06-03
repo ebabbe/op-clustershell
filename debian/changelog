@@ -1,3 +1,15 @@
+op-clustershell (2.1) UNRELEASED; urgency=medium
+
+  * OpenPath v2.1 released
+
+  * Fix RuntimeError: Set changed size during iteration for closing clients
+
+  * Reenable output directory and error directory logging for running commands
+
+  * Put in max/default of 500 mqtt/s3 connections at once
+
+ -- Eddie Babbe <edward.babbe@motorolasolutions.com> Mon, 03 Jun 2024 11:01:30 +0700
+
 op-clustershell (2.0) UNRELEASED; urgency=medium
 
   * OpenPath v2.0 released

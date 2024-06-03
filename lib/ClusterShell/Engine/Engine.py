@@ -53,33 +53,40 @@ class EngineException(Exception):
     Base engine exception.
     """
 
+
 class EngineAbortException(EngineException):
     """
     Raised on user abort.
     """
+
     def __init__(self, kill):
         EngineException.__init__(self)
         self.kill = kill
+
 
 class EngineTimeoutException(EngineException):
     """
     Raised when a timeout is encountered.
     """
 
+
 class EngineIllegalOperationError(EngineException):
     """
     Error raised when an illegal operation has been performed.
     """
+
 
 class EngineAlreadyRunningError(EngineIllegalOperationError):
     """
     Error raised when the engine is already running.
     """
 
+
 class EngineNotSupportedError(EngineException):
     """
     Error raised when the engine mechanism is not supported.
     """
+
     def __init__(self, engineid):
         EngineException.__init__(self)
         self.engineid = engineid
@@ -188,6 +195,7 @@ class EngineTimer(EngineBaseTimer):
     def _fire(self):
         self.eh.ev_timer(self)
 
+
 class _EngineTimerQ(object):
 
     class _EngineTimerCase(object):
@@ -195,6 +203,7 @@ class _EngineTimerQ(object):
         Helper class that allows comparisons of fire times, to be easily used
         in an heapq.
         """
+
         def __init__(self, client):
             self.client = client
             self.client._timercase = self
@@ -228,8 +237,11 @@ class _EngineTimerQ(object):
                 # Just print a debug message that could help detect issues
                 # coming from a long-running timer handler.
                 if self.fire_date < time_current:
-                    LOGGER.debug("Warning: passed interval time for %r "
-                                 "(long running event handler?)", self.client)
+                    LOGGER.debug(
+                        "Warning: passed interval time for %r "
+                        "(long running event handler?)",
+                        self.client,
+                    )
 
         def disarm(self):
             client = self.client
@@ -239,7 +251,6 @@ class _EngineTimerQ(object):
 
         def armed(self):
             return self.client is not None
-
 
     def __init__(self, engine):
         """
@@ -343,7 +354,7 @@ class _EngineTimerQ(object):
         """
         self._dequeue_disarmed()
         if len(self.timers) > 0:
-            return max(0., self.timers[0].fire_date - time.time())
+            return max(0.0, self.timers[0].fire_date - time.time())
 
         return -1
 
@@ -376,7 +387,7 @@ class Engine(object):
         self.info = info
 
         # and update engine id
-        self.info['engine'] = self.identifier
+        self.info["engine"] = self.identifier
 
         # keep track of all clients
         self._clients = set()
@@ -391,7 +402,7 @@ class Engine(object):
         self.reg_clifds = {}
 
         # fanout cache used to speed up client launch when fanout changed
-        self._prev_fanout = 0    # fanout_diff != 0 the first time
+        self._prev_fanout = 0  # fanout_diff != 0 the first time
 
         # Current loop iteration counter. It is the number of performed engine
         # loops in order to keep track of client registration epoch, so we can
@@ -433,8 +444,7 @@ class Engine(object):
             if client._reg_epoch < self._current_loopcnt:
                 return client, stream
             else:
-                LOGGER.debug("_fd2client: ignoring just re-used FD %d",
-                             stream.fd)
+                LOGGER.debug("_fd2client: ignoring just re-used FD %d", stream.fd)
         return (None, None)
 
     def _can_register(self, client):
@@ -444,14 +454,14 @@ class Engine(object):
         elif not client.delayable or client.worker._fanout == FANOUT_UNLIMITED:
             return True
         elif client.worker._fanout is FANOUT_DEFAULT:
-            return self._reg_stats.get('default', 0) < self.info['fanout']
+            return self._reg_stats.get("default", 0) < self.info["fanout"]
         else:
             worker = client.worker
             return self._reg_stats.get(worker, 0) < worker._fanout
 
     def _update_reg_stats(self, client, offset):
         if client.worker._fanout is FANOUT_DEFAULT:
-            key = 'default'
+            key = "default"
         else:
             key = client.worker
         self._reg_stats.setdefault(key, 0)
@@ -472,7 +482,6 @@ class Engine(object):
         if self.running and self._can_register(client):
             # in-fly add if running
             self.register(client._start())
-
 
     def _remove(self, client, abort, did_timeout=False):
         """Remove a client from engine (subroutine)."""
@@ -542,9 +551,10 @@ class Engine(object):
         assert client in self._clients or client in self._ports
         assert not client.registered
 
-        self._debug("REG %s (%s)(autoclose=%s)" % \
-                (client.__class__.__name__, client.streams,
-                 client.autoclose))
+        self._debug(
+            "REG %s (%s)(autoclose=%s)"
+            % (client.__class__.__name__, client.streams, client.autoclose)
+        )
 
         client.registered = True
         client._reg_epoch = self._current_loopcnt
@@ -553,8 +563,10 @@ class Engine(object):
             self._update_reg_stats(client, 1)
 
         # set interest event bits...
-        for streams, ievent in ((client.streams.active_readers, E_READ),
-                                (client.streams.active_writers, E_WRITE)):
+        for streams, ievent in (
+            (client.streams.active_readers, E_READ),
+            (client.streams.active_writers, E_WRITE),
+        ):
             for stream in streams():
                 self.reg_clifds[stream.fd] = client, stream
                 stream.events |= ievent
@@ -569,12 +581,13 @@ class Engine(object):
         """Unregister a stream from a client."""
         self._debug("UNREG_STREAM stream=%s" % stream)
         assert stream is not None and stream.fd is not None
-        assert stream.fd in self.reg_clifds, \
-            "stream fd %d not registered" % stream.fd
+        assert stream.fd in self.reg_clifds, "stream fd %d not registered" % stream.fd
         assert client.registered
         self._unregister_specific(stream.fd, stream.events & stream.evmask)
-        self._debug("UNREG_STREAM unregistering stream fd %d (%d)" % \
-                    (stream.fd, len(client.streams)))
+        self._debug(
+            "UNREG_STREAM unregistering stream fd %d (%d)"
+            % (stream.fd, len(client.streams))
+        )
         stream.events &= ~stream.evmask
         del self.reg_clifds[stream.fd]
         if not client.autoclose:
@@ -584,15 +597,16 @@ class Engine(object):
         """Unregister a client"""
         # sanity check
         assert client.registered
-        self._debug("UNREG %s (%s)" % (client.__class__.__name__, \
-                client.streams))
+        self._debug("UNREG %s (%s)" % (client.__class__.__name__, client.streams))
 
         # remove timeout timer
         self.timerq.invalidate(client)
 
         # clear interest events...
-        for streams, ievent in ((client.streams.active_readers, E_READ),
-                                (client.streams.active_writers, E_WRITE)):
+        for streams, ievent in (
+            (client.streams.active_readers, E_READ),
+            (client.streams.active_writers, E_WRITE),
+        ):
             for stream in streams():
                 if stream.fd in self.reg_clifds:
                     self._unregister_specific(stream.fd, stream.events & ievent)
@@ -607,8 +621,9 @@ class Engine(object):
 
     def modify(self, client, sname, setmask, clearmask):
         """Modify the next loop interest events bitset for a client stream."""
-        self._debug("MODEV set:0x%x clear:0x%x %s (%s)" % (setmask, clearmask,
-                                                           client, sname))
+        self._debug(
+            "MODEV set:0x%x clear:0x%x %s (%s)" % (setmask, clearmask, client, sname)
+        )
         stream = client.streams[sname]
         stream.new_events &= ~clearmask
         stream.new_events |= setmask
@@ -631,8 +646,10 @@ class Engine(object):
 
     def set_events(self, client, stream):
         """Set the active interest events bitset for a client stream."""
-        self._debug("SETEV new_events:0x%x events:0x%x for %s[%s]" % \
-            (stream.new_events, stream.events, client, stream.name))
+        self._debug(
+            "SETEV new_events:0x%x events:0x%x for %s[%s]"
+            % (stream.new_events, stream.events, client, stream.name)
+        )
 
         if not client.registered:
             LOGGER.debug("set_events: client %s not registered", self)
@@ -693,11 +710,11 @@ class Engine(object):
         """Start and register regular engine clients in respect of fanout."""
         # check if engine fanout has changed
         # NOTE: worker._fanout live changes not supported (see #323)
-        fanout_diff = self.info['fanout'] - self._prev_fanout
+        fanout_diff = self.info["fanout"] - self._prev_fanout
         if fanout_diff:
-            self._prev_fanout = self.info['fanout']
+            self._prev_fanout = self.info["fanout"]
 
-        for client in self._clients:
+        for client in self._clients.copy():
             if not client.registered and self._can_register(client):
                 self._debug("START CLIENT %s" % client.__class__.__name__)
                 self.register(client._start())
@@ -725,7 +742,7 @@ class Engine(object):
         except EngineTimeoutException:
             self.clear(did_timeout=True)
             raise
-        except: # MUST use BaseException as soon as possible (py2.5+)
+        except:  # MUST use BaseException as soon as possible (py2.5+)
             # The game is over.
             exc_t, exc_val, exc_tb = sys.exc_info()
             try:
@@ -739,7 +756,7 @@ class Engine(object):
                 # BaseException. For now, print a backtrace in debug to
                 # help detect the problem.
                 tbexc = traceback.format_exception(exc_t, exc_val, exc_tb)
-                LOGGER.debug(''.join(tbexc))
+                LOGGER.debug("".join(tbexc))
                 raise
             raise
         finally:
@@ -758,7 +775,7 @@ class Engine(object):
         ports = self._ports.copy()
         for port in ports:
             try:
-                port._handle_read('in')
+                port._handle_read("in")
             except (IOError, OSError) as ex:
                 if ex.errno in (errno.EAGAIN, errno.EWOULDBLOCK):
                     # no pending message
@@ -783,5 +800,5 @@ class Engine(object):
 
     def _debug(self, s):
         """library engine verbose debugging hook"""
-        #LOGGER.debug(s)
+        # LOGGER.debug(s)
         pass

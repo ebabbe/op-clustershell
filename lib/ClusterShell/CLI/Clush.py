@@ -824,6 +824,7 @@ def fetch_output_from_s3(
         responseId,
         nodes=ns,
         handler=handler,
+        display=display,
         timeout=timeout,
         remote=remote,
         tree=trytree,
@@ -1043,6 +1044,10 @@ def main():
     ):
         parser.error(
             "You must specify whether you want clush to publish an mqtt message or fetch a command result from S3."
+        )
+    if options.fanout > 500:
+        parser.error(
+            f"The maximum fanout value is 500 and you supplied a value of {options.fanout}. Rerun with a lesser value or let the default of 500 take over."
         )
 
     set_std_group_resolver_config(options.groupsconf)

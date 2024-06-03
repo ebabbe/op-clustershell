@@ -100,6 +100,16 @@ class OptionParser(optparse.OptionParser):
             help="optional groups.conf(5) group source to use",
         )
 
+        self.add_option(
+            "-f",
+            "--fanout",
+            action="store",
+            dest="fanout",
+            help="The amount of concurrent mqtt/s3 connections at once (default and max. of 500)",
+            default=500,
+            type="int",
+        )
+
     def install_clush_config_options(self):
         """Install config options for clush"""
         # config file override (--conf)
@@ -472,14 +482,6 @@ class OptionParser(optparse.OptionParser):
         if help is not None:
             self.hide_titles.append("Connection options:")
         optgrp = optparse.OptionGroup(self, "Connection options")
-        optgrp.add_option(
-            "-f",
-            "--fanout",
-            action="store",
-            dest="fanout",
-            help=help if help is not None else "use a specified fanout",
-            type="int",
-        )
 
         # help="queueing delay for traffic grooming"
         optgrp.add_option(

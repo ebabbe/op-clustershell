@@ -23,7 +23,7 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = "2.0"
+VERSION = "2.1"
 
 CFGDIR = "etc/clustershell"
 MANDIR = "share/man"
