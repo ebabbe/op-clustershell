@@ -1,8 +1,18 @@
+2024-06-03 E. Babbe <edward.babbe@motorolasolutions.com>
+
+	* OpenPath v2.1 released
+
+	* Fix RuntimeError: Set changed size during iteration for closing clients
+
+	* Reenable output directory and error directory logging for running commands
+
+	* Put in max/default of 500 mqtt/s3 connections at once
+
 2024-05-21 E. Babbe <edward.babbe@motorolasolutions.com>
 
-        * OpenPath v2.0 released
+    * OpenPath v2.0 released
 
-        * Clush can now fetch results of run-scripts from S3
+    * Clush can now fetch results of run-scripts from S3
 
 	* Handle own asynchronous mqtt publishing with threading, remove proton authentication
 

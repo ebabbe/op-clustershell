@@ -27,12 +27,15 @@ on a per ACU basis.
 
 """
 
+import os
 import opconf
 from io import BytesIO
 import socket
 import boto3
 import threading
 from ClusterShell.Worker.Exec import ExecClient, ExecWorker
+from ClusterShell.CLI.Clush import DirectOutputDirHandler
+from ClusterShell.NodeSet import NodeSet
 
 
 class S3Client(ExecClient):
@@ -143,13 +146,20 @@ class S3Worker(ExecWorker):
     ENVIRONMENT = opconf.main.get("env", default=HOSTNAME.split(".")[1])
     LOG_SCRIPT_BUCKET_NAME = f"openpath.{ENVIRONMENT}.acu.run-logs"
 
-    def __init__(self, responseId, nodes, handler, timeout=None, **kwargs):
+    def __init__(self, responseId, nodes, handler, display, timeout=None, **kwargs):
         self.session = boto3.Session()
         self.s3 = self.session.client("s3")
         self.responseId = responseId[0]
-        nodes = self._get_nodes() if len(nodes) == 0 else nodes
         if len(nodes) == 0:
-            nodes = "localhost"
+            nodes = self._get_nodes()
+            if len(nodes) == 0:
+                nodes = NodeSet.fromlist(["localhost"])
+            if display.outdir and not os.path.exists(display.outdir):
+                os.makedirs(display.outdir)
+            if display.errdir and not os.path.exists(display.errdir):
+                os.makedirs(display.errdir)
+            handler = DirectOutputDirHandler(display, nodes)
+
         super(S3Worker, self).__init__(nodes, handler, timeout, **kwargs)
 
     def _get_nodes(self):
@@ -161,7 +171,7 @@ class S3Worker(ExecWorker):
         )
         for o in result.get("CommonPrefixes", []):
             nodes.append(o.get("Prefix").split("/")[1])
-        return ",".join(nodes)
+        return NodeSet.fromlist(nodes)
 
     def _add_client(self, nodes, **kwargs):
         """Create one s3 client object."""

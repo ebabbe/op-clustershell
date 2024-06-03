@@ -606,9 +606,10 @@ class Task(object):
 
     def s3_fetch(self, responseId, **kwargs):
         """
-        Creates an mqtt worker object that handles and manages all of the mqtt clients.
+        Creates an s3 worker object that handles and manages all of the s3 clients.
         """
         handler = kwargs.get("handler", None)
+        display = kwargs.get("display", None)
         timeo = kwargs.get("timeout", None)
         autoclose = kwargs.get("autoclose", False)
         stderr = kwargs.get("stderr", self.default("stderr"))
@@ -620,6 +621,7 @@ class Task(object):
             responseId,
             NodeSet(kwargs["nodes"]),
             handler=handler,
+            display=display,
             stderr=stderr,
             timeout=timeo,
             autoclose=autoclose,
