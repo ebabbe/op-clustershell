@@ -125,9 +125,7 @@ class WorkerMqttPub(ExecWorker):
 
     def __init__(self, nodes, handler, timeout=None, **kwargs):
         logging.getLogger("AWSIoTPythonSDK.core").setLevel(logging.ERROR)
-        self.opbok = __import__("opbok.util")
         self.botocore = __import__("botocore.utils")
-        self.opus = __import__("opus")
         errors = kwargs.get("errors", {})
         true_nodes = expand(NodeSet.fromlist(nodes))
         client_config = botocore.config.Config(max_pool_connections=len(true_nodes))

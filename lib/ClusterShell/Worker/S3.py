@@ -53,7 +53,7 @@ class S3Client(ExecClient):
     def __init__(
         self,
         node,
-        responseId,
+        requestId,
         s3_conn,
         worker,
         stderr,
@@ -64,7 +64,7 @@ class S3Client(ExecClient):
         self.started = False
         self.s3_conn = s3_conn
         super(S3Client, self).__init__(
-            node, responseId, worker, stderr, timeout, autoclose, rank
+            node, requestId, worker, stderr, timeout, autoclose, rank
         )
 
     def _start(self):
@@ -75,7 +75,7 @@ class S3Client(ExecClient):
             self._on_nodeset_msgline(
                 self.key,
                 str.encode(
-                    f"No ACUs have replied with responseId {self.worker.responseId}. Either wait longer for a response, or check that the value provided is correct."
+                    f"No ACUs have replied with requestId {self.worker.requestId}. Either wait longer for a response, or check that the value provided is correct."
                 ),
                 self.worker.SNAME_STDERR,
             )
@@ -99,7 +99,7 @@ class S3Client(ExecClient):
 
     def _grab_response(self):
         f = BytesIO()
-        base_output_path = f"{self.worker.responseId}/{self.key}/"
+        base_output_path = f"{self.worker.requestId}/{self.key}/"
         try:
             file_path = base_output_path + self.OUTPUT_SUFFIX
             self.s3_conn.download_fileobj(
@@ -142,14 +142,13 @@ class S3Worker(ExecWorker):
     """
 
     S3_CLASS = S3Client
-    HOSTNAME = opconf.main.get("acu_hostname", default=socket.gethostname())
-    ENVIRONMENT = opconf.main.get("env", default=HOSTNAME.split(".")[1])
-    LOG_SCRIPT_BUCKET_NAME = f"openpath.{ENVIRONMENT}.acu.run-logs"
 
-    def __init__(self, responseId, nodes, handler, display, timeout=None, **kwargs):
+    def __init__(self, requestId, nodes, handler, display, timeout=None, **kwargs):
+        environment = kwargs.get("environment", None)
+        self.LOG_SCRIPT_BUCKET_NAME = f"openpath.{environment}.acu.run-logs"
         self.session = boto3.Session()
         self.s3 = self.session.client("s3")
-        self.responseId = responseId[0]
+        self.requestId = requestId[0]
         if len(nodes) == 0:
             nodes = self._get_nodes()
             if len(nodes) == 0:
@@ -166,7 +165,7 @@ class S3Worker(ExecWorker):
         nodes = []
         result = self.s3.list_objects(
             Bucket=self.LOG_SCRIPT_BUCKET_NAME,
-            Prefix=f"{self.responseId}/",
+            Prefix=f"{self.requestId}/",
             Delimiter="/",
         )
         for o in result.get("CommonPrefixes", []):
@@ -179,12 +178,12 @@ class S3Worker(ExecWorker):
         stderr = kwargs.get("stderr", False)
         rank = kwargs.get("rank")
         timeout = kwargs.get("timeout")
-        if self.responseId is not None:
+        if self.requestId is not None:
             cls = self.__class__.S3_CLASS
             self._clients.append(
                 cls(
                     nodes,
-                    self.responseId,
+                    self.requestId,
                     self.s3,
                     self,
                     stderr,

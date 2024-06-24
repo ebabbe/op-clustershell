@@ -1,3 +1,13 @@
+op-clustershell (3.0) UNRELEASED; urgency=medium
+
+  * OpenPath v3.0 released
+
+  * Clush can now be ran on user laptop, aws creds required
+
+  * Environment CLI arg required when ran locally (auto-detected with nebula)
+ 
+ -- Eddie Babbe <edward.babbe@motorolasolutions.com> Mon, 24 Jun 2024 13:12:30 +0700
+
 op-clustershell (2.1) UNRELEASED; urgency=medium
 
   * OpenPath v2.1 released

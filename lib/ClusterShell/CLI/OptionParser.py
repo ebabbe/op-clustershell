@@ -101,6 +101,14 @@ class OptionParser(optparse.OptionParser):
         )
 
         self.add_option(
+            "--env",
+            dest="env",
+            type="choice",
+            choices=["sandbox", "dev", "prod", "prodeu1"],
+            help="The environment of the ACUs you are trying to interact with",
+        )
+
+        self.add_option(
             "-f",
             "--fanout",
             action="store",
@@ -162,9 +170,9 @@ class OptionParser(optparse.OptionParser):
         optgrp = optparse.OptionGroup(self, "Connecting to S3")
 
         optgrp.add_option(
-            "--responseId",
+            "--requestId",
             action="append",
-            dest="responseId",
+            dest="requestId",
             help="fetch mqtt command response from S3",
         )
         self.add_option_group(optgrp)
