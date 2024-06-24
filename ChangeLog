@@ -1,3 +1,11 @@
+2024-06-24 E. Babbe <edward.babbe@motorolasolutions.com>
+
+	* OpenPath v3.0 released
+
+	* Clush can now be ran on user laptop, aws creds required
+
+	* Environment CLI arg required when ran locally (auto-detected with nebula)
+
 2024-06-03 E. Babbe <edward.babbe@motorolasolutions.com>
 
 	* OpenPath v2.1 released
@@ -10,9 +18,9 @@
 
 2024-05-21 E. Babbe <edward.babbe@motorolasolutions.com>
 
-    * OpenPath v2.0 released
+	* OpenPath v2.0 released
 
-    * Clush can now fetch results of run-scripts from S3
+	* Clush can now fetch results of run-scripts from S3
 
 	* Handle own asynchronous mqtt publishing with threading, remove proton authentication
 
@@ -20,29 +28,29 @@
 
 2024-03-07 E. Babbe <edward.babbe@motorolasolutions.com>
 
-        * OpenPath v1.2 released
+	* OpenPath v1.2 released
 
-        * Added support for command output to for errors to errdir and output to outdir
+	* Added support for command output to for errors to errdir and output to outdir
 
-        * Can publish commands to ACU MQTT Topic with --publish
+	* Can publish commands to ACU MQTT Topic with --publish
 
-        * Added ability to make debian package(s), will use those instead of python package now
+	* Added ability to make debian package(s), will use those instead of python package now
 
 2023-12-14 E. Babbe <edward.babbe@motorolasolutions.com>
 
-        * OpenPath v1.1 released
+	* OpenPath v1.1 released
 
-        * Allows for clushing to nebula
+	* Allows for clushing to nebula
 
-        * Nebula groups made so you don't need to know hostnames (ex. clush -g nebula:dev)
+	* Nebula groups made so you don't need to know hostnames (ex. clush -g nebula:dev)
 
-        * Introduction of ansible hostname pattern matching and --limit argument for selecting hosts of interest
+	* Introduction of ansible hostname pattern matching and --limit argument for selecting hosts of interest
 
 2023-12-12 E. Babbe <edward.babbe@motorolasolutions.com>
 
-        * OpenPath v1.0 released
+	* OpenPath v1.0 released
 
-        * Provides native acu name correlation not provided by standard ssh
+	* Provides native acu name correlation not provided by standard ssh
 
 2023-09-29 S. Thiell <sthiell@stanford.edu>
 

@@ -33,6 +33,11 @@ When no command are specified, clush runs interactively.
 
 from __future__ import print_function
 
+import boto3
+import configparser
+import datetime
+import json
+import opconf
 import logging
 import optparse
 import os
@@ -65,7 +70,7 @@ from ClusterShell.Event import EventHandler
 from ClusterShell.MsgTree import MsgTree
 from ClusterShell.NodeSet import RESOLVER_NOGROUP, set_std_group_resolver_config
 from ClusterShell.NodeSet import NodeSet, NodeSetParseError, std_group_resolver
-from ClusterShell.NodeSet import expand, fold
+from ClusterShell.NodeSet import expand
 from ClusterShell.Task import Task, task_self
 
 
@@ -482,6 +487,70 @@ class RunTimer(EventHandler):
         )
 
 
+class HeliumClient:
+    def __init__(self, env):
+        self.opus = __import__("opus")
+        self.botocore = __import__("botocore.utils")
+
+        api = "https://helium.{}.openpath.com".format(env)
+
+        self.region = (
+            self.botocore.utils.InstanceMetadataRegionFetcher().retrieve_region()
+        )
+        self.boto_client = boto3.client("ssm", region_name=self.region)
+        try:
+            nebula_username = self.ssm_get_parameter("nebula.helium.username")
+            nebula_password = self.ssm_get_parameter("nebula.helium.password")
+            nebula_namespaceId = self.ssm_get_parameter("nebula.helium.namespaceId")
+        except Exception:
+            logging.critical("You are not authorized to login to Helium.")
+            sys.exit(1)
+
+        self.client = self.opus.Helium(
+            api,
+            username=nebula_username,
+            password=nebula_password,
+            namespaceId=nebula_namespaceId,
+        )
+
+    def ssm_get_parameter(self, parameter):
+        """Get a parameter from AWS"""
+
+        result = self.boto_client.get_parameter(Name=parameter, WithDecryption=True)
+
+        parameter = result.get("Parameter")
+
+        if parameter:
+            return parameter.get("Value")
+
+        return None
+
+    def format_nodes(self, nodes):
+        new_node_list = []
+        errors = {}
+        tmp_list = []
+        for node in nodes:
+            if "openpath.local" not in node:
+                if node.isnumeric():
+                    tmp_list.append(node)
+                else:
+                    node = node[3 : len(node)]
+                    tmp_list.append(node)
+            else:
+                new_node_list.append(node)
+        filter_string = ",".join(tmp_list)
+        results = self.client.listAcus(filter=f"id:({filter_string})")
+        for result in results:
+            tmp_list.remove(str(result.get("id")))
+            new_node_list.append(result.get("hostname"))
+        if len(tmp_list) > 0:
+            for node in tmp_list:
+                errors[node] = f"Cannot find ACU in Helium."
+                new_node_list.append(node)
+
+        return new_node_list, errors
+
+
 def signal_handler(signum, frame):
     """Signal handler used for main thread notification"""
     if signum == signal.SIGUSR1:
@@ -725,7 +794,15 @@ def bind_stdin(worker, display):
 
 
 def run_command(
-    task, cmd, ns, timeout, display, remote, trytree, publish=None, errors={}
+    task,
+    cmd,
+    ns,
+    timeout,
+    display,
+    remote,
+    trytree,
+    publish=None,
+    errors={},
 ):
     """
     For SSH command:
@@ -784,7 +861,7 @@ def run_command(
 
 
 def fetch_output_from_s3(
-    task, responseId, ns, timeout, display, remote, trytree, errors={}
+    task, requestId, ns, timeout, display, remote, trytree, environment=None, errors={}
 ):
     """
     For SSH command:
@@ -821,13 +898,14 @@ def fetch_output_from_s3(
         # this is the simpler but faster output handler
         handler = DirectOutputHandler(display)
     worker = task.s3_fetch(
-        responseId,
+        requestId,
         nodes=ns,
         handler=handler,
         display=display,
         timeout=timeout,
         remote=remote,
         tree=trytree,
+        environment=environment,
         errors=errors,
     )
     task.resume(timeout=8)
@@ -953,7 +1031,6 @@ def clush_excepthook(extype, exp, traceback):
 
 
 def format_nodes(nodes):
-    env = os.environ.get("OP_ENV")
     new_node_list = []
     errors = {}
     for node in nodes:
@@ -969,6 +1046,160 @@ def format_nodes(nodes):
         else:
             new_node_list.append(node)
     return new_node_list, errors
+
+
+def load_profile_credentials_static(op_env: str) -> None:
+    """
+    Calls `aws --profile={env} sts get-caller-identity` to trigger a credential cache update, then searches the
+    ~/.aws/cli/cache folder for the matching cache entry. This was separated from load_profile_credentials to allow
+    other scripts to setup the credentials without having to instantiate a full EpoxyGlueOperation object.
+
+    With set_env true, this function will set the appropriate AWS env credential variables.
+
+    Returns None on failure; success returns { AwsAccountId: '...', AwsCliCacheFile: aws_cli_cache_file,
+    AccessKeyId: '...', SecretAccessKey: '...', SessionToken: '...'].
+
+    """
+    # 2021-03-31: updated this code to no longer assume
+    # deterministic cache filenames (due to botocore changes);
+    # instead, following the suggestion at
+    # https://github.com/aws/aws-sdk-js/issues/1543#issuecomment-353574613
+    # we scan the whole ~/.aws/cli/cache directory looking for
+    # matching non-expired cache files
+
+    # 2020-10-05: Now that pull request
+    # https://github.com/boto/botocore/pull/1157 has merged, we can update
+    # this code. However, we cannot update simply to the sample code
+    # provided at the end of the pull request thread. That code assumes
+    # AWS_PROFILE env var is set prior to the import completions. We often
+    # set AWS_PROFILE after processing command line arguments. As such,
+    # https://github.com/OpenPathSec/Palladium/blob/master/src/palladium_lib/palladium_lib/boto3_session_cache.py
+    # provides a better model for our command line tools. It finalizes the
+    # session setup on first boto3 use rather than at import time. This
+    # allows time for CLI arg processing to setup AWS_PROFILE.
+    #
+    # We could update this cf.py module to use the new boto3_client and
+    # boto3_resource calls as suggested by the pull request. However, that
+    # could potentially break existing EpoxyGlueOperation clients because
+    # they would also need to switch to the newer boto3_client and
+    # boto3_resource calls. Without this client code change, their code
+    # would always prompt for 2nd factor authentication. That is the
+    # remaining value to the below code. By setting the AWS_* environmental
+    # variables, any client directly using boto3 keeps the benefit of the
+    # skipped need for always prompting for 2nd factor authbenefits.
+
+    # see https://github.com/boto/botocore/pull/1157 for how this
+    # whole function is almost moot if someone would just accept the
+    # PR into botocore upstream
+
+    logging.info("loading AWS credentials...")
+
+    # super-hacky: just call some dummy aws command to either verify
+    # that we have fresh MFA credentials, or else prompt the user to
+    # enter an MFA token to create/refresh the cached credentials
+    try:
+        subprocess.check_output(
+            ["aws", f"--profile={op_env}", "sts", "get-caller-identity"]
+        )
+    except subprocess.CalledProcessError:
+        logging.critical("Incorrect AWS Credentials")
+        sys.exit(1)
+
+    conf_ini = configparser.ConfigParser()
+    conf_ini.read(f'{os.environ["HOME"]}/.aws/config')
+    conf = conf_ini[f"profile {op_env}"]
+    sts_assume_role_arn_prefix = (
+        conf["role_arn"].replace("iam", "sts").replace(":role/", ":assumed-role/")
+    )
+    # sys.stderr.write(f'prefix {sts_assume_role_arn_prefix}\n')
+
+    # get the current time in a format that we can compare vs. the Expiration timestamps in the AWS credential cache
+    # files.
+    now = datetime.datetime.now(datetime.timezone.utc)
+    now_str = (
+        now.isoformat()
+    )  # e.g. 2021-04-01T00:18:02.975586+00:00, but we want it as 2021-04-01T00:18:02Z
+    now_str = now_str.split(".")[0] + "Z"
+    # sys.stderr.write(f'now_str {now_str}\n')
+
+    cache_dir = f'{os.environ["HOME"]}/.aws/cli/cache'
+    aws_cli_cache = None
+    aws_cli_cache_file = None
+
+    with os.scandir(cache_dir) as iter:
+        # check the cache directory for a credentials cache file that:
+        #   1. matches the desired role name,
+        #   2. is not expired,
+        #   3. has the latest expiration date if more than one file matches
+        for dir_entry in iter:
+            try:
+                if dir_entry.name.startswith(".") or not dir_entry.is_file():
+                    continue
+
+                fname = f"{cache_dir}/{dir_entry.name}"
+                with open(fname) as f:
+                    # cache contents will look like:
+                    # {
+                    #   'Credentials': {
+                    #     'AccessKeyId': '...',
+                    #     'SecretAccessKey': '...',
+                    #     'SessionToken': '...',
+                    #     'Expiration': '2021-04-01T07:42:58Z'
+                    #   },
+                    #   'AssumedRoleUser': {
+                    #     'AssumedRoleId': 'AROAJ3WDHZ6T3YVXT7LR2:botocore-session-1617219775',
+                    #     'Arn': 'arn:aws:sts::77...714:assumed-role/Organization...Role/botocore-session-16...75'
+                    #   },
+                    #   'ResponseMetadata': {
+                    #     'RequestId': '15275a1a-d441-471b-bc7a-6302c5aee3e0',
+                    #     'HTTPStatusCode': 200,
+                    #     'HTTPHeaders': {
+                    #       'x-amzn-requestid': '15275a1a-d441-471b-bc7a-6302c5aee3e0',
+                    #       'content-type': 'text/xml',
+                    #       'content-length': '1114',
+                    #       'date': 'Wed, 31 Mar 2021 19:42:58 GMT'
+                    #     },
+                    #     'RetryAttempts': 0
+                    #   }
+                    # }
+                    contents = json.loads(f.read())
+                    # sys.stderr.write(f'dir_entry {dir_entry.name} -> {contents}\n')
+
+                    if not contents["AssumedRoleUser"]["Arn"].startswith(
+                        sts_assume_role_arn_prefix
+                    ):
+                        # sys.stderr.write('nomatch\n')
+                        continue
+
+                    if contents["Credentials"]["Expiration"] < now_str:
+                        # sys.stderr.write('expired\n')
+                        continue
+
+                    # sys.stderr.write('match\n')
+                    # sys.stderr.write(f'expiration {contents["Credentials"]["Expiration"]}\n')
+                    # NOTE python doesn't make it easy to parse dates from ISO strings, but fortunately
+                    # lexicographical comparison of the date strings is also the correct date comparison (at
+                    # least until Y10K)
+                    if (not aws_cli_cache) or (
+                        contents["Credentials"]["Expiration"]
+                        > aws_cli_cache["Credentials"]["Expiration"]
+                    ):
+                        aws_cli_cache = contents
+                        aws_cli_cache_file = fname
+
+            except Exception as e:
+                sys.stderr.write(str(e))
+
+    if aws_cli_cache and aws_cli_cache_file:
+        logging.info(f"loaded session credentials from {aws_cli_cache_file}\n")
+
+        os.environ["AWS_ACCESS_KEY_ID"] = aws_cli_cache["Credentials"]["AccessKeyId"]
+        os.environ["AWS_SECRET_ACCESS_KEY"] = aws_cli_cache["Credentials"][
+            "SecretAccessKey"
+        ]
+        os.environ["AWS_SESSION_TOKEN"] = aws_cli_cache["Credentials"]["SessionToken"]
+    else:
+        logging.info(f"no valid session credentials found in {cache_dir}\n")
 
 
 def get_hosts_from_ansible(filter_string, limit):
@@ -1034,24 +1265,6 @@ def main():
         parser.install_connector_options(optparse.SUPPRESS_HELP)
 
     (options, args) = parser.parse_args()
-
-    if not (
-        options.ssh
-        or options.responseId
-        or options.publish
-        or options.copy
-        or options.rcopy
-    ):
-        parser.error(
-            "You must specify whether you want clush to publish an mqtt message or fetch a command result from S3."
-        )
-    if options.fanout > 500:
-        parser.error(
-            f"The maximum fanout value is 500 and you supplied a value of {options.fanout}. Rerun with a lesser value or let the default of 500 take over."
-        )
-
-    set_std_group_resolver_config(options.groupsconf)
-
     #
     # Load config file and apply overrides
     #
@@ -1063,6 +1276,30 @@ def main():
         logging.debug("clush: STARTING DEBUG")
     else:
         logging.basicConfig(level=logging.CRITICAL)
+
+    if not (
+        options.ssh
+        or options.requestId
+        or options.publish
+        or options.copy
+        or options.rcopy
+    ):
+        parser.error(
+            "You must specify whether you want clush to publish an mqtt message or fetch a command result from S3."
+        )
+    is_nebula = "nebula" in socket.gethostname()
+    if (not is_nebula and not options.env) and not options.ssh:
+        parser.error("You must specify which environment you are running against.")
+
+    if (options.publish or options.requestId) and not is_nebula:
+        load_profile_credentials_static(options.env)
+        helium_client = HeliumClient(options.env)
+    if options.fanout > 500:
+        parser.error(
+            f"The maximum fanout value is 500 and you supplied a value of {options.fanout}. Rerun with a lesser value or let the default of 500 take over."
+        )
+
+    set_std_group_resolver_config(options.groupsconf)
 
     # Should we use ANSI colors for nodes?
     if config.color == "auto":
@@ -1160,7 +1397,7 @@ def main():
 
     # Do we have an exclude list? (-x ...)
     nodeset_base.difference_update(nodeset_exclude)
-    if len(nodeset_base) < 1 and not options.responseId:
+    if len(nodeset_base) < 1 and not options.requestId:
         parser.error("No node to run on.")
 
     if options.pick and options.pick < len(nodeset_base):
@@ -1180,7 +1417,7 @@ def main():
     #
     # check for clush interactive mode
     interactive = not len(args) and not (
-        options.copy or options.rcopy or options.publish or options.responseId
+        options.copy or options.rcopy or options.publish or options.requestId
     )
     # check for foreground ttys presence (input)
     stdin_isafgtty = (
@@ -1341,7 +1578,11 @@ def main():
         ),
     )
 
-    formatted_nodes, errors = format_nodes(expand(nodeset_base))
+    formatted_nodes, errors = (
+        format_nodes(expand(nodeset_base))
+        if is_nebula
+        else helium_client.format_nodes(expand(nodeset_base))
+    )
     nodeset_base = NodeSet(",".join(formatted_nodes))
     if not task.default("USER_interactive"):
         if display.verbosity >= VERB_DEBUG and task.topology:
@@ -1368,15 +1609,21 @@ def main():
                 options.preserve_flag,
                 display,
             )
-        elif options.responseId:
+        elif options.requestId:
+            environment = (
+                opconf.main.get("env", default=socket.gethostname().split(".")[1])
+                if is_nebula
+                else options.env
+            )
             fetch_output_from_s3(
                 task,
-                options.responseId,
+                options.requestId,
                 nodeset_base,
                 timeout,
                 display,
                 options.remote != "no",
                 options.worker is None,
+                environment,
                 errors,
             )
         else:

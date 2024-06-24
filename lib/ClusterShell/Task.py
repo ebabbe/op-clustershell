@@ -604,13 +604,14 @@ class Task(object):
 
             return worker
 
-    def s3_fetch(self, responseId, **kwargs):
+    def s3_fetch(self, requestId, **kwargs):
         """
         Creates an s3 worker object that handles and manages all of the s3 clients.
         """
         handler = kwargs.get("handler", None)
         display = kwargs.get("display", None)
         timeo = kwargs.get("timeout", None)
+        environment = kwargs.get("environment", None)
         autoclose = kwargs.get("autoclose", False)
         stderr = kwargs.get("stderr", self.default("stderr"))
         stdin = kwargs.get("stdin", self.default("stdin"))
@@ -618,7 +619,7 @@ class Task(object):
         errors = kwargs.get("errors", {})
         wrkcls = self.default("s3_worker")
         worker = wrkcls(
-            responseId,
+            requestId,
             NodeSet(kwargs["nodes"]),
             handler=handler,
             display=display,
@@ -626,6 +627,7 @@ class Task(object):
             timeout=timeo,
             autoclose=autoclose,
             remote=remote,
+            environment=environment,
             errors=errors,
         )
         if not stdin:
