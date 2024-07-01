@@ -412,6 +412,7 @@ class OptionParser(optparse.OptionParser):
             action="store",
             dest="whencolor",
             choices=THREE_CHOICES,
+            default="always",
             help="whether to use ANSI " "colors (never, always or auto)",
         )
         optgrp.add_option(
