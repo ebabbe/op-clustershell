@@ -24,9 +24,11 @@ This module implements OpenSSH engine client and task's worker.
 """
 
 import os
+
 # Older versions of shlex can not handle unicode correctly.
 # Consider using ushlex instead.
 import shlex
+import subprocess
 
 from ClusterShell.Worker.Exec import ExecClient, CopyClient, ExecWorker
 
@@ -36,47 +38,110 @@ class SshClient(ExecClient):
     Ssh EngineClient.
     """
 
+    def __init__(
+        self,
+        node,
+        command,
+        worker,
+        stderr,
+        timeout,
+        autoclose=False,
+        rank=None,
+    ):
+        self.is_nebula = worker.is_nebula
+        self.environment = worker.environment
+        super(SshClient, self).__init__(
+            node,
+            command,
+            worker,
+            stderr,
+            timeout,
+            autoclose,
+            rank,
+        )
+
     def _build_cmd(self):
         """
         Build the shell command line to start the ssh command.
         Return an array of command and arguments.
         """
-
         task = self.worker.task
-        path = task.info("ssh_path") or "ssh"
-        user = task.info("ssh_user")
-        options = task.info("ssh_options")
-
-        # Build ssh command
-        cmd_l = [os.path.expanduser(pathc) for pathc in shlex.split(path)]
-
-        # Add custom ssh options first as the first obtained value is
-        # used. Thus all options are overridable by custom options.
-        if options:
-            # use expanduser() for options like '-i ~/.ssh/my_id_rsa'
-            cmd_l += [os.path.expanduser(opt) for opt in shlex.split(options)]
-
-        # Hardwired options (overridable by ssh_options)
-        # note: you should use only long-format options here
-        cmd_l += ["-oForwardAgent=no", "-oForwardX11=no"]
-
-        if user:
-            cmd_l.append("-l")
-            cmd_l.append(user)
 
         connect_timeout = task.info("connect_timeout", 0)
-        if connect_timeout > 0:
-            cmd_l.append("-oConnectTimeout=%d" % connect_timeout)
+        if self.is_nebula:
 
-        # Disable passphrase/password querying
-        # When used together with sshpass this must be overwritten
-        # by a custom option to "-oBatchMode=no".
-        cmd_l.append("-oBatchMode=yes")
+            path = task.info("ssh_path") or "ssh"
+            user = task.info("ssh_user")
+            options = task.info("ssh_options")
 
-        cmd_l.append("%s" % self.key)
-        cmd_l.append("%s" % self.command)
+            # Build ssh command
+            cmd_l = [os.path.expanduser(pathc) for pathc in shlex.split(path)]
 
-        return (cmd_l, None)
+            # Add custom ssh options first as the first obtained value is
+            # used. Thus all options are overridable by custom options.
+            if options:
+                # use expanduser() for options like '-i ~/.ssh/my_id_rsa'
+                cmd_l += [os.path.expanduser(opt) for opt in shlex.split(options)]
+
+            # Hardwired options (overridable by ssh_options)
+            # note: you should use only long-format options here
+            cmd_l += ["-oForwardAgent=no", "-oForwardX11=no"]
+
+            if user:
+                cmd_l.append("-l")
+                cmd_l.append(user)
+
+            if connect_timeout > 0:
+                cmd_l.append("-oConnectTimeout=%d" % connect_timeout)
+
+            # Disable passphrase/password querying
+            # When used together with sshpass this must be overwritten
+            # by a custom option to "-oBatchMode=no".
+            cmd_l.append("-oBatchMode=yes")
+
+            cmd_l.append("%s" % self.key)
+            cmd_l.append("%s" % self.command)
+            return (cmd_l, None)
+        else:
+            connect_timeout = (
+                connect_timeout
+                if connect_timeout >= (3 * len(self.worker._clients))
+                else (3 * len(self.worker._clients))
+            )
+            target = self.worker.BASTIONS[self.environment]
+            reason1 = (
+                subprocess.check_output(
+                    [
+                        "aws",
+                        "--profile",
+                        "master",
+                        "sts",
+                        "get-caller-identity",
+                        "--output",
+                        "text",
+                        "--query",
+                        "Arn",
+                    ],
+                    stderr=subprocess.DEVNULL,
+                )
+                .decode()
+                .strip()
+            )
+            reason2 = f"Running command on acu {self.key}"
+            acu_name = self.key.split(".")[0]
+            cmd = [
+                "aws",
+                f"--profile={self.worker.environment}",
+                "ssm",
+                "start-session",
+                f"--target={target}",
+                f"""--reason={reason1} {reason2} """,
+                f"--document-name=ACUTeleport",
+                "--parameters",
+                f"""acuID="{acu_name} {self.command} & sleep {connect_timeout}; kill $! 2>/dev/null" """,
+            ]
+            return (cmd, None)
+
 
 class ScpClient(CopyClient):
     """
@@ -90,6 +155,8 @@ class ScpClient(CopyClient):
         """
 
         task = self.worker.task
+        connect_timeout = task.info("connect_timeout", 0)
+
         path = task.info("scp_path") or "scp"
         user = task.info("scp_user") or task.info("ssh_user")
 
@@ -113,15 +180,13 @@ class ScpClient(CopyClient):
         if self.preserve:
             cmd_l.append("-p")
 
-        connect_timeout = task.info("connect_timeout", 0)
         if connect_timeout > 0:
             cmd_l.append("-oConnectTimeout=%d" % connect_timeout)
 
         # Disable passphrase/password querying
         # When used together with sshpass this must be overwritten
         # by a custom option to "-oBatchMode=no".
-        #cmd_l.append("-oBatchMode=yes")
-
+        # cmd_l.append("-oBatchMode=yes")
 
         if self.reverse:
             if user:
@@ -129,8 +194,11 @@ class ScpClient(CopyClient):
             else:
                 cmd_l.append("[%s]:%s" % (self.key, self.source))
 
-            cmd_l.append(os.path.join(self.dest, "%s.%s" % \
-                         (os.path.basename(self.source), self.key)))
+            cmd_l.append(
+                os.path.join(
+                    self.dest, "%s.%s" % (os.path.basename(self.source), self.key)
+                )
+            )
         else:
             cmd_l.append(self.source)
             if user:
@@ -139,6 +207,7 @@ class ScpClient(CopyClient):
                 cmd_l.append("[%s]:%s" % (self.key, self.dest))
 
         return (cmd_l, None)
+
 
 class WorkerSsh(ExecWorker):
     """
@@ -160,5 +229,17 @@ class WorkerSsh(ExecWorker):
 
     SHELL_CLASS = SshClient
     COPY_CLASS = ScpClient
+    BASTIONS = {
+        "dev": "i-0e02020e4888b8aaa",
+        "prod": "i-0746e5af8f6139e1a",
+        "prodeu1": "i-05135a158441c30f5",
+        "sandbox": "i-091259d0968da12ea",
+    }
 
-WORKER_CLASS=WorkerSsh
+    def __init__(self, nodes, handler, timeout=None, **kwargs):
+        self.is_nebula = kwargs.get("is_nebula", None)
+        self.environment = kwargs.get("environment", None)
+        super(WorkerSsh, self).__init__(nodes, handler, timeout, **kwargs)
+
+
+WORKER_CLASS = WorkerSsh

@@ -578,7 +578,7 @@ def readline_setup():
         pass
 
 
-def ttyloop(task, nodeset, timeout, display, remote, trytree):
+def ttyloop(task, nodeset, timeout, display, remote, trytree, is_nebula, environment):
     """Manage the interactive prompt to run command"""
     readline_avail = False
     interactive = task.default("USER_interactive")
@@ -747,7 +747,17 @@ def ttyloop(task, nodeset, timeout, display, remote, trytree):
                     continue
                 if readline_avail:
                     readline.write_history_file(get_history_file())
-                run_command(task, cmd, ns, timeout, display, remote, trytree)
+                run_command(
+                    task,
+                    cmd,
+                    ns,
+                    timeout,
+                    display,
+                    remote,
+                    trytree,
+                    is_nebula=is_nebula,
+                    environment=environment,
+                )
     return rc
 
 
@@ -803,6 +813,8 @@ def run_command(
     trytree,
     publish=None,
     errors={},
+    is_nebula=None,
+    environment=None,
 ):
     """
     For SSH command:
@@ -851,7 +863,14 @@ def run_command(
         task.resume(timeout=8)
     else:
         worker = task.shell(
-            cmd, nodes=ns, handler=handler, timeout=timeout, remote=remote, tree=trytree
+            cmd,
+            nodes=ns,
+            handler=handler,
+            timeout=timeout,
+            remote=remote,
+            tree=trytree,
+            is_nebula=is_nebula,
+            environment=environment,
         )
         if ns is None:
             worker.set_key("LOCAL")
@@ -1257,9 +1276,12 @@ def main():
     parser.install_mqtt_options()
     parser.install_s3_options()
 
+    is_nebula = "nebula" in socket.gethostname()
+
     if "--ssh" in sys.argv:
-        parser.install_filecopy_options()
         parser.install_connector_options()
+        if is_nebula:
+            parser.install_filecopy_options()
     else:
         parser.install_filecopy_options(optparse.SUPPRESS_HELP)
         parser.install_connector_options(optparse.SUPPRESS_HELP)
@@ -1287,17 +1309,27 @@ def main():
         parser.error(
             "You must specify whether you want clush to publish an mqtt message or fetch a command result from S3."
         )
-    is_nebula = "nebula" in socket.gethostname()
-    if (not is_nebula and not options.env) and not options.ssh:
+    if not is_nebula and not options.env:
         parser.error("You must specify which environment you are running against.")
 
-    if (options.publish or options.requestId) and not is_nebula:
+    if not is_nebula:
         load_profile_credentials_static(options.env)
         helium_client = HeliumClient(options.env)
-    if options.fanout > 500:
-        parser.error(
-            f"The maximum fanout value is 500 and you supplied a value of {options.fanout}. Rerun with a lesser value or let the default of 500 take over."
-        )
+
+    if options.ssh and not is_nebula:
+        if options.fanout > 10 and options.fanout != 500:
+            parser.info(
+                f"Changing fanout from {options.fanout} to 20. This will slow down results, but ensure nebula does not freeze up."
+            )
+            options.fanout = 10
+
+        if options.fanout > 10:
+            options.fanout = 10
+    else:
+        if options.fanout > 500:
+            parser.error(
+                f"The maximum fanout value is 500 and you supplied a value of {options.fanout}. Rerun with a lesser value or let the default of 500 take over."
+            )
 
     set_std_group_resolver_config(options.groupsconf)
 
@@ -1584,6 +1616,11 @@ def main():
         else helium_client.format_nodes(expand(nodeset_base))
     )
     nodeset_base = NodeSet(",".join(formatted_nodes))
+    environment = (
+        opconf.main.get("env", default=socket.gethostname().split(".")[1])
+        if is_nebula
+        else options.env
+    )
     if not task.default("USER_interactive"):
         if display.verbosity >= VERB_DEBUG and task.topology:
             print(Display.COLOR_RESULT_FMT % "-" * 15)
@@ -1610,11 +1647,7 @@ def main():
                 display,
             )
         elif options.requestId:
-            environment = (
-                opconf.main.get("env", default=socket.gethostname().split(".")[1])
-                if is_nebula
-                else options.env
-            )
+
             fetch_output_from_s3(
                 task,
                 options.requestId,
@@ -1637,6 +1670,8 @@ def main():
                 options.worker is None,
                 options.publish,
                 errors,
+                is_nebula,
+                environment,
             )
 
     if user_interaction:
@@ -1647,6 +1682,8 @@ def main():
             display,
             options.remote != "no",
             options.worker is None,
+            is_nebula,
+            environment,
         )
     elif task.default("USER_interactive"):
         display.vprint_err(VERB_QUIET, "ERROR: interactive mode requires a tty")

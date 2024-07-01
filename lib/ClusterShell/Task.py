@@ -690,6 +690,8 @@ class Task(object):
         stderr = kwargs.get("stderr", self.default("stderr"))
         stdin = kwargs.get("stdin", self.default("stdin"))
         remote = kwargs.get("remote", True)
+        is_nebula = kwargs.get("is_nebula", None)
+        environment = kwargs.get("environment", None)
 
         if kwargs.get("nodes", None):
             assert (
@@ -723,6 +725,8 @@ class Task(object):
                 timeout=timeo,
                 autoclose=autoclose,
                 remote=remote,
+                is_nebula=is_nebula,
+                environment=environment,
             )
         else:
             # create old fashioned local worker
