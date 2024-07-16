@@ -29,7 +29,15 @@ CFGDIR = "etc/clustershell"
 MANDIR = "share/man"
 
 # Dependencies (for pip install)
-REQUIRES = ["PyYAML", "botocore", "epoxy", "opus"]
+REQUIRES = [
+    "PyYAML",
+    "botocore",
+    "epoxy",
+    "opus",
+    "flask",
+    "flask_lambda",
+    "Werkzeug==2.0.3",
+]
 
 setup(
     name="OP_ClusterShell",

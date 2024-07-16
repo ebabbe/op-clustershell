@@ -1243,7 +1243,8 @@ def get_hosts_from_ansible(filter_string, limit):
     return final_node_list
 
 
-def main():
+def main(command=None, nodes=None, env=None):
+    print("help!!!!")
     """clush script entry point"""
     sys.excepthook = clush_excepthook
 
@@ -1287,6 +1288,12 @@ def main():
         parser.install_connector_options(optparse.SUPPRESS_HELP)
 
     (options, args) = parser.parse_args()
+    if command is not None:
+        args = command
+    if nodes is not None:
+        options.nodes = nodes
+    if env is not None:
+        options.env = env
     #
     # Load config file and apply overrides
     #
