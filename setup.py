@@ -34,9 +34,6 @@ REQUIRES = [
     "botocore",
     "epoxy",
     "opus",
-    "flask",
-    "flask_lambda",
-    "Werkzeug==2.0.3",
 ]
 
 setup(

@@ -1,3 +1,19 @@
+OP-ClusterShell
+===============
+
+OP-ClusterShell (op-clush) is the part of the code added to extend functionality and make  
+it compatiable with our use cases. op-clush now publishes mqtt messages to each device's  
+command topic, where proton parses the command, places it into the local redis cache,  
+and schedules a meson run-scripts task. Meson then checks to see if the script exists in  
+JFrog, and if it does, fetches it, executes it, and logs the result to S3. The repo  
+containing the whitelisted scripts exists here:  
+    https://github.com/OpenPathSec/Run-Scripts
+
+Clush API
+---------
+Clush API is an API represented by lambda and API Gateway in AWS and deployed by aws chalice.  
+All of the code and deployment information is in the **clush-api** folder. 
+
 ClusterShell Python Library and Tools
 =====================================
 
@@ -14,17 +30,6 @@ performance clusters by providing a lightweight but scalable Python API for
 developers. It also provides clush, clubak and cluset/nodeset, convenient
 command-line tools that allow traditional shell scripts to benefit from some
 of the library features.
-
-OP-ClusterShell
-===============
-
-OP-ClusterShell (op-clush) is the part of the code added to extend functionality and make  
-it compatiable with our use cases. op-clush now publishes mqtt messages to each device's  
-command topic, where proton parses the command, places it into the local redis cache,  
-and schedules a meson run-scripts task. Meson then checks to see if the script exists in  
-JFrog, and if it does, fetches it, executes it, and logs the result to S3. The repo  
-containing the whitelisted scripts exists here:  
-    https://github.com/OpenPathSec/Run-Scripts
 
 Requirements
 ------------

@@ -58,20 +58,20 @@ try:
 except NameError:
     raw_input = input
 
-from ClusterShell.Defaults import DEFAULTS, _load_workerclass
-from ClusterShell.CLI.Config import ClushConfig, ClushConfigError
-from ClusterShell.CLI.Display import Display, sys_stdin
-from ClusterShell.CLI.Display import VERB_QUIET, VERB_STD, VERB_VERB, VERB_DEBUG
-from ClusterShell.CLI.OptionParser import OptionParser
-from ClusterShell.CLI.Error import GENERIC_ERRORS, handle_generic_error
-from ClusterShell.CLI.Utils import bufnodeset_cmpkey, human_bi_bytes_unit
+from chalicelib.Defaults import DEFAULTS, _load_workerclass
+from chalicelib.CLI.Config import ClushConfig, ClushConfigError
+from chalicelib.CLI.Display import Display, sys_stdin
+from chalicelib.CLI.Display import VERB_QUIET, VERB_STD, VERB_VERB, VERB_DEBUG
+from chalicelib.CLI.OptionParser import OptionParser
+from chalicelib.CLI.Error import GENERIC_ERRORS, handle_generic_error
+from chalicelib.CLI.Utils import bufnodeset_cmpkey, human_bi_bytes_unit
 
-from ClusterShell.Event import EventHandler
-from ClusterShell.MsgTree import MsgTree
-from ClusterShell.NodeSet import RESOLVER_NOGROUP, set_std_group_resolver_config
-from ClusterShell.NodeSet import NodeSet, NodeSetParseError, std_group_resolver
-from ClusterShell.NodeSet import expand
-from ClusterShell.Task import Task, task_self
+from chalicelib.Event import EventHandler
+from chalicelib.MsgTree import MsgTree
+from chalicelib.NodeSet import RESOLVER_NOGROUP, set_std_group_resolver_config
+from chalicelib.NodeSet import NodeSet, NodeSetParseError, std_group_resolver
+from chalicelib.NodeSet import expand
+from chalicelib.Task import Task, task_self
 
 
 class UpdatePromptException(Exception):
@@ -130,9 +130,10 @@ class OutputHandler(EventHandler):
         a SIGUSR1 signal. We use task-specific user-defined variable
         to record current states (prefixed by USER_).
         """
+        print("in update prompt")
         worker.task.set_default("USER_running", False)
         if worker.task.default("USER_handle_SIGUSR1"):
-            os.kill(os.getpid(), signal.SIGUSR1)
+            os.kill(os.getpid(), signal.SIGUSR2)
 
     def ev_start(self, worker):
         """Worker is starting."""
@@ -488,7 +489,7 @@ class RunTimer(EventHandler):
 
 
 class HeliumClient:
-    def __init__(self, env):
+    def __init__(self, env, username=None, password=None, namespaceId=1000):
         self.opus = __import__("opus")
         self.botocore = __import__("botocore.utils")
 
@@ -499,18 +500,36 @@ class HeliumClient:
         )
         self.boto_client = boto3.client("ssm", region_name=self.region)
         try:
-            nebula_username = self.ssm_get_parameter("nebula.helium.username")
-            nebula_password = self.ssm_get_parameter("nebula.helium.password")
-            nebula_namespaceId = self.ssm_get_parameter("nebula.helium.namespaceId")
+            self.username = (
+                self.ssm_get_parameter("nebula.helium.username")
+                if username is None
+                else username
+            )
+            self.password = (
+                self.ssm_get_parameter("nebula.helium.password")
+                if password is None
+                else password
+            )
+            self.namespaceId = (
+                self.ssm_get_parameter("nebula.helium.namespaceId")
+                if namespaceId is None
+                else namespaceId
+            )
         except Exception:
             logging.critical("You are not authorized to login to Helium.")
             sys.exit(1)
 
+        # self.client = self.opus.Helium(
+        #     api,
+        #     username=nebula_username,
+        #     password=nebula_password,
+        #     namespaceId=nebula_namespaceId,
+        # )
         self.client = self.opus.Helium(
             api,
-            username=nebula_username,
-            password=nebula_password,
-            namespaceId=nebula_namespaceId,
+            username=self.username,
+            password=self.password,
+            namespaceId=namespaceId,
         )
 
     def ssm_get_parameter(self, parameter):
@@ -553,6 +572,7 @@ class HeliumClient:
 
 def signal_handler(signum, frame):
     """Signal handler used for main thread notification"""
+    print("in signal handler")
     if signum == signal.SIGUSR1:
         signal.signal(signal.SIGUSR1, signal.SIG_IGN)
         raise UpdatePromptException()
@@ -1243,7 +1263,7 @@ def get_hosts_from_ansible(filter_string, limit):
     return final_node_list
 
 
-def main():
+def main(command=None, nodes=None, env=None):
     """clush script entry point"""
     sys.excepthook = clush_excepthook
 
@@ -1287,6 +1307,12 @@ def main():
         parser.install_connector_options(optparse.SUPPRESS_HELP)
 
     (options, args) = parser.parse_args()
+    if command is not None:
+        args = command
+    if nodes is not None:
+        options.nodes = nodes
+    if env is not None:
+        options.env = env
     #
     # Load config file and apply overrides
     #
