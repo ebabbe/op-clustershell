@@ -14,11 +14,11 @@ The examples below use the dev api
 
 #### Dev
 
-The dev api id is 5ixlq2u2k0
+The dev api id is sct3w4rt0j
 
 #### Prod
 
-The prod api id is xxxxxxxxxxx
+The prod api id is 67rbmn5bu9
 
 #### Determining resource paths of API
 
@@ -34,7 +34,7 @@ generate a device list, and **username** and **password** are helium credentials
 Additionally, a **timeout** value can be provided, which is a value in seconds of how long you are willing to wait for a response. Default value is 60. 
 
 ```
-aws --profile dev apigateway test-invoke-method --rest-api-id 5ixlq2u2k0  --resource-id xx4ad4  --http-method POST  --body '{"command": "whoami.sh",  "devices": ["acu12671.org6512.dev.openpath.local", "acu11375.org6499.dev.openpath.local"], "orgs":[6499], "username":"edward.babbe@motorolasolutions.com", "password":<password here>"}' --headers '{"Content-Type": "application/json"}'
+aws --profile dev apigateway test-invoke-method --rest-api-id adw97ttpj5  --resource-id xx4ad4  --http-method POST  --body '{"command": "whoami.sh",  "devices": ["acu12671.org6512.dev.openpath.local", "acu11375.org6499.dev.openpath.local"], "orgs":[6499], "username":"edward.babbe@motorolasolutions.com", "password":<password here>"}' --headers '{"Content-Type": "application/json"}'
 ```
 
 #### Retrieving a request result
@@ -42,7 +42,7 @@ aws --profile dev apigateway test-invoke-method --rest-api-id 5ixlq2u2k0  --reso
 The only required field is **requestId**. You can also supply **devices**, but **requestId** will also find any devices that reported back that requestId.  
 Additionally, a **timeout** value can be provided, which is a value in seconds of how long you are willing to wait for a response. Default value is 60. 
 ```
-aws --profile dev apigateway test-invoke-method --rest-api-id 5ixlq2u2k0  --resource-id 8td1p2  --http-method POST  --body '{"requestId": "641b6ac3-8ed0-40b0-a0fc-f893785ec7d3"}' --headers '{"Content-Type": "application/json"}'
+aws --profile dev apigateway test-invoke-method --rest-api-id adw97ttpj5  --resource-id 8td1p2  --http-method POST  --body '{"requestId": "641b6ac3-8ed0-40b0-a0fc-f893785ec7d3"}' --headers '{"Content-Type": "application/json"}'
 ```
 
 ### CURL
