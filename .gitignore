@@ -19,7 +19,7 @@ venv
 dev-tools/*.mk
 dev-tools/Dockerfile.builder*
 dev-tools/Makefile.sample
-
+clush-api/.chalice/deploy*
 .coverage
 *.egg-info
 __pycache__

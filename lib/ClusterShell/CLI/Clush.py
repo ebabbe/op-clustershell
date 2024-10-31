@@ -32,6 +32,7 @@ When no command are specified, clush runs interactively.
 """
 
 from __future__ import print_function
+from inspect import trace
 
 import boto3
 import configparser
@@ -184,30 +185,34 @@ class DirectOutputDirHandler(DirectOutputHandler):
         self._ns = ns
         self._outfiles = {}
         self._errfiles = {}
+        self.display = display
         if display.outdir:
             for n in self._ns:
-                self._outfiles[n] = open(join(display.outdir, n), mode="w")
+                # wipe output file
+                open(join(display.outdir, n), mode="w").close()
+                self._outfiles[n] = join(display.outdir, n)
         if display.errdir:
             for n in self._ns:
-                self._errfiles[n] = open(join(display.errdir, n), mode="w")
+                # wipe err file
+                open(join(display.errdir, n), mode="w").close()
+                self._errfiles[n] = join(display.errdir, n)
 
     def ev_read(self, worker, node, sname, msg):
         DirectOutputHandler.ev_read(self, worker, node, sname, msg)
         if sname == worker.SNAME_STDOUT:
             if self._display.outdir:
-                self._outfiles[node].write("{}\n".format(msg.decode()))
+                file_name = self._outfiles[node]
+                with open(file_name, mode="a") as f:
+                    f.write("{}\n".format(msg.decode()))
+
         elif sname == worker.SNAME_STDERR:
             if self._display.errdir:
-                self._errfiles[node].write("{}\n".format(msg.decode()))
+                file_name = self._errfiles[node]
+                with open(file_name, mode="a") as f:
+                    f.write("{}\n".format(msg.decode()))
 
     def ev_close(self, worker, timedout):
         DirectOutputHandler.ev_close(self, worker, timedout)
-        if self._display.outdir:
-            for v in self._outfiles.values():
-                v.close()
-        if self._display.errdir:
-            for v in self._errfiles.values():
-                v.close()
 
 
 class DirectProgressOutputHandler(DirectOutputHandler):
@@ -1027,6 +1032,7 @@ def clush_excepthook(extype, exp, traceback):
     handling from main thread and from (possible) separate task thread.
     This hook has to be previously installed on startup by overriding
     sys.excepthook and task.excepthook."""
+
     try:
         raise exp
     except ClushConfigError as econf:
@@ -1277,6 +1283,8 @@ def main():
     parser.install_s3_options()
 
     is_nebula = "nebula" in socket.gethostname()
+    if is_nebula:
+        parser.install_ansible_node_selection()
 
     if "--ssh" in sys.argv:
         parser.install_connector_options()
@@ -1442,7 +1450,8 @@ def main():
             print(Display.COLOR_RESULT_FMT % msg)
 
     # Set open files limit.
-    set_fdlimit(config.fd_max, display)
+    # Let system settings take over
+    # set_fdlimit(config.fd_max, display)
 
     #
     # Task management

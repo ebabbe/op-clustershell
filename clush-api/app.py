@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import time
 from typing import Optional
 
@@ -7,8 +8,8 @@ from chalice import Chalice, Response, IAMAuthorizer
 
 from chalice.app import BadRequestError
 
-from chalice_spec import PydanticPlugin, ChalicePlugin, Docs, Operation
-from apispec import APISpec
+# from chalice_spec import PydanticPlugin, ChalicePlugin, Docs, Operation
+# from apispec import APISpec
 from pydantic import BaseModel
 
 from optparse import Values
@@ -26,13 +27,13 @@ from chalicelib.MsgTree import MsgTree
 
 
 app = Chalice(app_name="clush-api")
-spec = APISpec(
-    chalice_app=app,
-    title="clush-api",
-    version="1.0.0",
-    openapi_version="3.0.2",
-    plugins=[PydanticPlugin(), ChalicePlugin()],
-)
+# spec = APISpec(
+#     chalice_app=app,
+#     title="clush-api",
+#     version="1.0.0",
+#     openapi_version="3.0.2",
+#     plugins=[PydanticPlugin(), ChalicePlugin()],
+# )
 authorizer = IAMAuthorizer()
 
 MAX_DEVICES = int(os.environ["MAX_DEVICES"])
@@ -108,10 +109,20 @@ def get_output(task, max_time=8 * 60 * 60):
 
                 for key, message in task._msgtrees.get("stdout", {}).items():
                     try:
-                        results_dict[key[1]] = json.loads(message.message().decode())
+                        stringMessage = json.loads(message.message().decode())
 
-                    except (json.JSONDecodeError, TypeError):
-                        results_dict[key[1]] = message.message().decode()
+                    except (json.JSONDecodeError, TypeError) as e:
+
+                        stringMessage = message.message().decode()
+                    if key[1] not in results_dict:
+                        results_dict[key[1]] = {"output": stringMessage}
+                    else:
+                        results_dict[key[1]]["output"] = stringMessage
+
+                    if "requestID" in stringMessage:
+                        result = re.search("requestID (.*) published", stringMessage)
+                        results_dict[key[1]]["requestId"] = result.group(1)
+                    results_dict[key[1]]["error"] = ""
 
                     response_count += 1
 
@@ -122,12 +133,19 @@ def get_output(task, max_time=8 * 60 * 60):
             with task.msgtree_lock:
 
                 for key, message in task._msgtrees.get("stderr", {}).items():
-
                     try:
-                        results_dict[key[1]] = json.loads(message.message().decode())
+                        stringMessage = json.loads(message.message().decode())
 
-                    except (json.JSONDecodeError, TypeError):
-                        results_dict[key[1]] = message.message().decode()
+                    except (json.JSONDecodeError, TypeError) as e:
+
+                        stringMessage = message.message().decode()
+
+                    if key[1] not in results_dict:
+                        results_dict[key[1]] = {"error": stringMessage}
+                    else:
+                        results_dict[key[1]]["error"] = stringMessage
+
+                    results_dict[key[1]]["output"] = ""
 
                     response_count += 1
 
@@ -136,8 +154,10 @@ def get_output(task, max_time=8 * 60 * 60):
                 )
 
     except Exception as e:
+
         return e
     task.abort()
+
     return results_dict
 
 
@@ -145,7 +165,7 @@ def get_output(task, max_time=8 * 60 * 60):
     "/publish",
     authorizer=authorizer,
     methods=["POST"],
-    docs=Docs(post=Operation(request=PublishRequest, response=RequestResponse)),
+    # docs=Docs(post=Operation(request=PublishRequest, response=RequestResponse)),
 )
 def publish():
     try:
@@ -271,7 +291,7 @@ def publish():
     "/results",
     authorizer=authorizer,
     methods=["POST"],
-    docs=Docs(post=Operation(request=ResultsRequest, response=RequestResponse)),
+    # docs=Docs(post=Operation(request=ResultsRequest, response=RequestResponse)),
 )
 def retrieve_results():
     try:
@@ -312,6 +332,7 @@ def retrieve_results():
         {},
     )
     results_dict = get_output(task, timeout)
+
     if len(results_dict) == 0:
         response = RequestResponse(
             results={},
@@ -385,6 +406,6 @@ def retrieve_results():
 #     pass
 
 
-# @app.route("/health")
-# def get_health():
-#     pass
+@app.route("/health")
+def get_health():
+    return {"Hello": "World"}

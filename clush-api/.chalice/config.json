@@ -1,24 +1,33 @@
 {
   "version": "2.0",
   "app_name": "clush-api",
+  "api_gateway_endpoint_type": "REGIONAL",
   "stages": {
     "dev": {
-       "environment_variables": {
+      "environment_variables": {
         "ENVIRONMENT": "dev",
         "MAX_DEVICES": "1000"
       },
       "api_gateway_stage": "dev",
-      "autogen_policy" : false,
-      "iam_policy_file": "./policy-dev.json"
+      "autogen_policy": false,
+      "iam_policy_file": "./policy-dev.json",
+      "api_gateway_custom_domain": {
+        "domain_name": "clush-api.dev.alta.avigilon.com",
+        "certificate_arn": "arn:aws:acm:us-west-2:777708544714:certificate/ffe8a141-b499-4182-9e1a-89ba88fdfbd7"
+      }
     },
     "prod": {
-       "environment_variables": {
+      "environment_variables": {
         "MAX_DEVICES": "1000",
         "ENVIRONMENT": "prod"
       },
-      "autogen_policy" : false,
+      "autogen_policy": false,
       "api_gateway_stage": "prod",
-      "iam_policy_file": "./policy-prod.json"
+      "iam_policy_file": "./policy-prod.json",
+      "api_gateway_custom_domain": {
+        "domain_name": "clush-api.prod.alta.avigilon.com",
+        "certificate_arn": "arn:aws:acm:us-west-2:797824427225:certificate/a62126ba-6d9f-443d-b546-20f41b378286"
+      }
     }
   }
 }

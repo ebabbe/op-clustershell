@@ -177,6 +177,27 @@ class OptionParser(optparse.OptionParser):
         )
         self.add_option_group(optgrp)
 
+    def install_ansible_node_selection(self):
+        """Options for selecting nodes by using the 'limit' and 'filter-string' ansible arguments"""
+        optgrp = optparse.OptionGroup(self, "Selecting nodes via ansible")
+
+        optgrp.add_option(
+            "--filter-string",
+            action="store",
+            type=str,
+            dest="filter_string",
+            default="",
+            help="Equivalent to filtering hosts in ansible by pattern",
+        )
+        optgrp.add_option(
+            "--limit",
+            action="store",
+            type=str,
+            dest="limit",
+            default="",
+            help="Equivalent to limit argument in ansible for filtering hosts",
+        )
+
     def install_nodes_options(self):
         """Install nodes selection options"""
         optgrp = optparse.OptionGroup(self, "Selecting target nodes")
@@ -235,22 +256,6 @@ class OptionParser(optparse.OptionParser):
             default=[],
             metavar="FILE",
             help="path to file containing a list of target hosts",
-        )
-        optgrp.add_option(
-            "--filter-string",
-            action="store",
-            type=str,
-            dest="filter_string",
-            default="",
-            help="Equivalent to filtering hosts in ansible by pattern",
-        )
-        optgrp.add_option(
-            "--limit",
-            action="store",
-            type=str,
-            dest="limit",
-            default="",
-            help="Equivalent to limit argument in ansible for filtering hosts",
         )
         optgrp.add_option(
             "--topology",

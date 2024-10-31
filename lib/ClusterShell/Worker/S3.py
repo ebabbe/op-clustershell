@@ -163,13 +163,15 @@ class S3Worker(ExecWorker):
 
     def _get_nodes(self):
         nodes = []
-        result = self.s3.list_objects(
+        paginator = self.s3.get_paginator("list_objects_v2")
+        pages = paginator.paginate(
             Bucket=self.LOG_SCRIPT_BUCKET_NAME,
             Prefix=f"{self.requestId}/",
             Delimiter="/",
         )
-        for o in result.get("CommonPrefixes", []):
-            nodes.append(o.get("Prefix").split("/")[1])
+        for page in pages:
+            for o in page.get("CommonPrefixes", []):
+                nodes.append(o.get("Prefix").split("/")[1])
         return NodeSet.fromlist(nodes)
 
     def _add_client(self, nodes, **kwargs):
