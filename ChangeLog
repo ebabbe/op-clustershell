@@ -1,3 +1,15 @@
+2024-10-31 E. Babbe <edward.babbe@motorolasolutions.com>
+
+	* OpenPath v4.0 released
+
+	* AWS Version of clush, contained in clush-api folder, with custom domain name
+
+	* file descriptor limits default to host limits
+
+	* -f argument is now reserved for Nodeset "fold" command, use --fanout instead
+
+	* removed ansible host gathering features from non-nebula versions
+
 2024-07-01 E. Babbe <edward.babbe@motorolasolutions.com>
 
 	* OpenPath v3.1 released
