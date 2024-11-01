@@ -1,14 +1,14 @@
-op-clustershell (3.2) UNRELEASED; urgency=medium
+op-clustershell (4.0) UNRELEASED; urgency=medium
 
-	* OpenPath v4.0 released
+  * OpenPath v4.0 released
 
-	* AWS Version of clush, contained in clush-api folder, with custom domain name
+  * AWS Version of clush, contained in clush-api folder, with custom domain name
 
-	* file descriptor limits default to host limits
+  * file descriptor limits default to host limits
 
-	* -f argument is now reserved for Nodeset "fold" command, use --fanout instead
+  * -f argument is now reserved for Nodeset "fold" command, use --fanout instead
 
-	* removed ansible host gathering features from non-nebula versions
+  * removed ansible host gathering features from non-nebula versions
 
  -- Eddie Babbe <edward.babbe@motorolasolutions.com> Thu, 31 Oct 2024 15:18:27 +0700
 
