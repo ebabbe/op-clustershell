@@ -44,6 +44,7 @@ class PublishRequest(BaseModel):
     devices: Optional[set] = []
     command: str
     orgs: Optional[set] = []
+    requestId: str = None
     timeout: int = 60
     username: str = None
     password: str = None
@@ -255,6 +256,7 @@ def publish():
         True,
         True,
         {},
+        request.requestId,
         False,
         ENVIRONMENT,
     )

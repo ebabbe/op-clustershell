@@ -156,6 +156,12 @@ class OptionParser(optparse.OptionParser):
             dest="publish",
             help="publish command to mqtt",
         )
+        optgrp.add_option(
+            "--providedId",
+            action="append",
+            dest="requestId",
+            help="user-provided requestId for the command you are publishing\nAllows for forced grouping of ACU responses in S3",
+        )
         # optgrp.add_option(
         #     "--listen",
         #     action="store_true",

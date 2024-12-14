@@ -586,6 +586,7 @@ class Task(object):
         stdin = kwargs.get("stdin", self.default("stdin"))
         remote = kwargs.get("remote", True)
         errors = kwargs.get("errors", {})
+        requestId = kwargs.get("requestId", None)
         wrkcls = self.default("mqtt_worker")
         if kwargs.get("nodes", None):
             worker = wrkcls(
@@ -597,6 +598,7 @@ class Task(object):
                 autoclose=autoclose,
                 remote=remote,
                 errors=errors,
+                requestId=requestId,
             )
             if not stdin:
                 try:

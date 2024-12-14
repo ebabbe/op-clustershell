@@ -127,6 +127,7 @@ class WorkerMqttPub(ExecWorker):
         logging.getLogger("AWSIoTPythonSDK.core").setLevel(logging.ERROR)
         self.botocore = __import__("botocore.utils")
         errors = kwargs.get("errors", {})
+        requestId = kwargs.get("requestId", None)
         true_nodes = expand(NodeSet.fromlist(nodes))
         client_config = botocore.config.Config(max_pool_connections=len(true_nodes))
         self.getOpals(true_nodes, errors)
@@ -139,7 +140,7 @@ class WorkerMqttPub(ExecWorker):
             "command": "runCommand",
             "data": {"command": f"{kwargs.get('command')}"},
         }
-        requestId = str(uuid.uuid4())
+        requestId = str(uuid.uuid4()) if requestId is None else requestId[0]
         self.msg["requestId"] = requestId
         super(WorkerMqttPub, self).__init__(nodes, handler, timeout, **kwargs)
 

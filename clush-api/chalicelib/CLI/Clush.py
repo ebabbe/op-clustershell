@@ -832,6 +832,7 @@ def run_command(
     remote,
     trytree,
     publish=None,
+    requestId=None,
     errors={},
     is_nebula=None,
     environment=None,
@@ -879,6 +880,7 @@ def run_command(
             remote=remote,
             tree=trytree,
             errors=errors,
+            requestId=requestId,
         )
         task.resume(timeout=8)
     else:
@@ -903,12 +905,7 @@ def fetch_output_from_s3(
     task, requestId, ns, timeout, display, remote, trytree, environment=None, errors={}
 ):
     """
-    For SSH command:
-        Create and run the specified command line, displaying
-        results in a dshbak way when gathering is used.
-    For MQTT Command:
-        Create and publish the specified command line to each
-        ACU's command topic.
+    Fetch the output of a request from S3
     """
     task.set_default("USER_running", True)
 
@@ -1456,7 +1453,9 @@ def main(command=None, nodes=None, env=None):
     # Do we have an exclude list? (-x ...)
     nodeset_base.difference_update(nodeset_exclude)
     if len(nodeset_base) < 1 and not options.requestId:
-        parser.error("No node to run on.")
+        parser.error(
+            "No node to run on. Ensure you provide nodelist before running command on CLI."
+        )
 
     if options.pick and options.pick < len(nodeset_base):
         # convert to string for sample as nsiter() is slower for big
@@ -1672,7 +1671,7 @@ def main(command=None, nodes=None, env=None):
                 options.preserve_flag,
                 display,
             )
-        elif options.requestId:
+        elif options.requestId and options.publish is None:
 
             fetch_output_from_s3(
                 task,
@@ -1695,6 +1694,7 @@ def main(command=None, nodes=None, env=None):
                 options.remote != "no",
                 options.worker is None,
                 options.publish,
+                options.requestId,
                 errors,
                 is_nebula,
                 environment,
