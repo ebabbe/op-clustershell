@@ -1,3 +1,14 @@
+op-clustershell (4.1) UNRELEASED; urgency=medium
+  * OpenPath v4.1 released
+
+  * Allows for providing a requestId across requests
+
+  * fixes bug with redirecting output
+
+  * file descriptor limit is now just system max
+
+ -- Eddie Babbe <edward.babbe@motorolasolutions.com> Tue, 07 Jan 2025 15:58:38 +0700
+
 op-clustershell (4.0) UNRELEASED; urgency=medium
 
   * OpenPath v4.0 released

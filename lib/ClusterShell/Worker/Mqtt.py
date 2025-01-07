@@ -22,6 +22,7 @@ ClusterShell Mqtt support
 
 """
 import logging
+import os
 from ClusterShell.NodeSet import NodeSet, expand
 import uuid
 import json
@@ -32,6 +33,8 @@ import botocore
 
 
 from ClusterShell.Worker.Exec import ExecClient, ExecWorker
+
+from ClusterShell.Engine.Engine import E_READ
 
 
 class MqttClient(ExecClient):
@@ -66,34 +69,56 @@ class MqttClient(ExecClient):
         json_msg = json.dumps(self.msg)
         self._on_nodeset_start(self.key)
         args = ()
+        self.stdout_output_pipe, self.stdout_input_pipe = os.pipe()
+        self.err_output_pipe, self.err_input_pipe = os.pipe()
+        if self._stderr:
+            self.streams.set_stream(
+                self.worker.SNAME_STDERR, self.err_output_pipe, E_READ, retain=False
+            )
+        self.streams.set_stream(
+            self.worker.SNAME_STDOUT, self.stdout_output_pipe, E_READ, retain=False
+        )
+        self._engine.evlooprefcnt += 2
         try:
             if self.topic.startswith("ERROR: "):
                 raise Exception(self.topic)
 
         except Exception as e:
-            self._on_nodeset_msgline(
-                self.key, str.encode(repr(e)), self.worker.SNAME_STDERR
-            )
-            target = self._kill_client
+
+            target = self._log_error_msg
+            args = (repr(e) + "\n",)
         else:
             target = self._send_message
-            args = (
-                self._pub_callback,
-                json_msg,
-            )
-        thread = threading.Thread(target=target, args=args)
-        thread.start()
+            args = (json_msg,)
+        self.thread = threading.Thread(target=target, args=args)
+        self.thread.start()
+        self._on_nodeset_start(self.key)
         return self
 
-    def _send_message(self, callback, json_msg):
+    def _log_error_msg(self, msg):
+        os.write(self.err_input_pipe, str.encode(msg))
+
+        os.close(self.stdout_input_pipe)
+        os.close(self.err_input_pipe)
+        if self._engine is not None:
+            self._engine.evlooprefcnt -= 2
+
+    def _send_message(self, json_msg):
         try:
             self.client.publish(topic=self.topic, payload=json_msg, qos=self.QOS_ONE)
-            callback()
-        except Exception as e:
-            self._on_nodeset_msgline(
-                self.key, str.encode(repr(e)), self.worker.SNAME_STDERR
+            os.write(
+                self.stdout_input_pipe,
+                str.encode(
+                    f"MQTT message with requestID {self.msg['requestId']} published successfully!\n"
+                ),
             )
-            self._kill_client()
+            os.close(self.stdout_input_pipe)
+            os.close(self.err_input_pipe)
+            if self._engine is not None:
+                self._engine.evlooprefcnt -= 2
+
+        except Exception as e:
+            self._log_error_msg((repr(e) + "\n"))
 
     def _kill_client(self):
         while self._engine is not None:
@@ -102,20 +127,12 @@ class MqttClient(ExecClient):
                 return
 
     def _close(self, abort, timeout):
+        if self.thread.name != threading.current_thread().name:
+            self.thread.join()
         self.streams.clear()
         self.invalidate()
         self._on_nodeset_close(self.key, 0)
         self.worker._check_fini()
-
-    def _pub_callback(self):
-        self._on_nodeset_msgline(
-            self.key,
-            str.encode(
-                f"MQTT message with requestID {self.msg['requestId']} published successfully!"
-            ),
-            self.worker.SNAME_STDOUT,
-        )
-        self._kill_client()
 
 
 class WorkerMqttPub(ExecWorker):
