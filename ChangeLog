@@ -1,3 +1,13 @@
+2025-01-07 E. Babbe <edward.babbe@motorolasolutions.com>
+
+	* OpenPath v4.1 released
+
+	* Allows for providing a requestId across requests
+
+	* fixes bug with redirecting output
+
+	* file descriptor limit is now just system max
+
 2024-10-31 E. Babbe <edward.babbe@motorolasolutions.com>
 
 	* OpenPath v4.0 released

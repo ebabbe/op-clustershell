@@ -28,14 +28,13 @@ on a per ACU basis.
 """
 
 import os
-import opconf
 from io import BytesIO
-import socket
 import boto3
 import threading
 from ClusterShell.Worker.Exec import ExecClient, ExecWorker
 from ClusterShell.CLI.Clush import DirectOutputDirHandler
 from ClusterShell.NodeSet import NodeSet
+from ClusterShell.Engine.Engine import E_READ
 
 
 class S3Client(ExecClient):
@@ -71,30 +70,49 @@ class S3Client(ExecClient):
         self.started = True
         self._on_nodeset_start(self.key)
         target = self._grab_response
-        if self.key == "localhost":
-            self._on_nodeset_msgline(
-                self.key,
-                str.encode(
-                    f"No ACUs have replied with requestId {self.worker.requestId}. Either wait longer for a response, or check that the value provided is correct."
-                ),
-                self.worker.SNAME_STDERR,
+        self.stdout_output_pipe, self.stdout_input_pipe = os.pipe()
+        self.err_output_pipe, self.err_input_pipe = os.pipe()
+        args = ()
+        if self._stderr:
+            self.streams.set_stream(
+                self.worker.SNAME_STDERR, self.err_output_pipe, E_READ, retain=False
             )
-            target = self._kill_client
+        self.streams.set_stream(
+            self.worker.SNAME_STDOUT, self.stdout_output_pipe, E_READ, retain=False
+        )
+        self._engine.evlooprefcnt += 2
+        if self.key == "localhost":
+            target = self._log_error_msg
+            args = (
+                f"No ACUs have replied with requestId {self.worker.requestId}. Either wait longer for a response, or check that the value provided is correct.\n",
+            )
 
-        thread = threading.Thread(target=target)
-        thread.start()
+        self.thread = threading.Thread(target=target, args=args)
+        self.thread.start()
         return self
 
+    def _log_error_msg(self, msg):
+        os.write(self.err_input_pipe, str.encode(msg))
+
+        os.close(self.stdout_input_pipe)
+        os.close(self.err_input_pipe)
+        if self._engine is not None:
+            self._engine.evlooprefcnt -= 2
+
     def _kill_client(self):
+
         while self._engine is not None:
             if self.registered:
                 self._engine.remove(self)
                 return
 
     def _close(self, abort, timeout):
+        if self.thread.name != threading.current_thread().name:
+            self.thread.join()
         self.streams.clear()
         self.invalidate()
         self._on_nodeset_close(self.key, 0)
+
         self.worker._check_fini()
 
     def _grab_response(self):
@@ -105,31 +123,29 @@ class S3Client(ExecClient):
             self.s3_conn.download_fileobj(
                 self.worker.LOG_SCRIPT_BUCKET_NAME, file_path, f
             )
-            self._on_nodeset_msgline(
-                self.key,
-                str.encode(f.getvalue().decode()),
-                self.worker.SNAME_STDOUT,
-            )
+
+            os.write(self.stdout_input_pipe, str.encode(f"{f.getvalue().decode()}\n"))
+
+            os.close(self.err_input_pipe)
+            os.close(self.stdout_input_pipe)
+
         except Exception:
+
             try:
                 file_path = base_output_path + self.ERROR_SUFFIX
                 self.s3_conn.download_fileobj(
                     self.worker.LOG_SCRIPT_BUCKET_NAME, file_path, f
                 )
-                self._on_nodeset_msgline(
-                    self.key,
-                    str.encode(f.getvalue().decode()),
-                    self.worker.SNAME_STDERR,
-                )
+                self._log_error_msg(f"{f.getvalue().decode()}\n")
+
             except Exception:
-
-                self._on_nodeset_msgline(
-                    self.key,
-                    str.encode(f"Cannot find reponse for {self.key}. Try again later."),
-                    self.worker.SNAME_STDERR,
+                self._log_error_msg(
+                    f"Cannot find reponse for {self.key}. Try again later.\n"
                 )
 
-        self._kill_client()
+        else:
+            if self._engine is not None:
+                self._engine.evlooprefcnt -= 2
 
 
 class S3Worker(ExecWorker):

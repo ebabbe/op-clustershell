@@ -65,7 +65,6 @@ class EngineEPoll(Engine):
         else:
             assert event & E_WRITE
             eventmask = select.EPOLLOUT
-
         self.epolling.register(fd, eventmask)
 
     def _unregister_specific(self, fd, ev_is_set):
@@ -125,7 +124,6 @@ class EngineEPoll(Engine):
                 # might get interrupted by a signal
                 if ex.errno == errno.EINTR:
                     continue
-
             for fd, event in evlist:
 
                 # get client instance
@@ -195,4 +193,3 @@ class EngineEPoll(Engine):
 
         self._debug("LOOP EXIT evlooprefcnt=%d (reg_clifds=%s) (timers=%d)" % \
                 (self.evlooprefcnt, self.reg_clifds, len(self.timerq)))
-

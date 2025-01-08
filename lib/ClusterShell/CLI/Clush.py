@@ -867,7 +867,7 @@ def run_command(
             errors=errors,
             requestId=requestId,
         )
-        task.resume(timeout=8)
+        task.resume()
     else:
         worker = task.shell(
             cmd,
@@ -929,7 +929,7 @@ def fetch_output_from_s3(
         environment=environment,
         errors=errors,
     )
-    task.resume(timeout=8)
+    task.resume()
 
 
 def run_copy(task, sources, dest, ns, timeout, preserve_flag, display):
@@ -994,7 +994,7 @@ def set_fdlimit(fd_max, display):
     if hard < fd_max:
         msgfmt = "Warning: fd_max set to %d but max open files hard limit is %d"
         display.vprint_err(VERB_VERB, msgfmt % (fd_max, hard))
-    rlim_max = min(hard, fd_max)
+    rlim_max = max(hard, fd_max)
     if soft != rlim_max:
         msgfmt = "Changing max open files soft limit from %d to %d"
         display.vprint(VERB_DEBUG, msgfmt % (soft, rlim_max))
@@ -1450,7 +1450,7 @@ def main():
 
     # Set open files limit.
     # Let system settings take over
-    # set_fdlimit(config.fd_max, display)
+    set_fdlimit(config.fd_max, display)
 
     #
     # Task management
